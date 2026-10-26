@@ -237,15 +237,14 @@
   }
   .gallery-card {
     background: var(--surface); border-radius: var(--radius-card);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border); overflow: hidden;
     cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
-    display: flex; flex-direction: column; min-height: 0;
+    display: flex; flex-direction: column; height: 200px;
   }
   .gallery-card:hover { box-shadow: var(--shadow); }
   .gallery-card:active { transform: scale(0.98); }
   .gallery-thumb {
-    width: 100%; height: 30vw; min-height: 90px; max-height: 140px;
-    flex-shrink: 0;
+    width: 100%; flex: 1 1 auto; min-height: 0;
     background: var(--surface-muted);
     display: flex; align-items: center; justify-content: center;
     overflow: hidden; position: relative;
@@ -316,17 +315,16 @@
   }
   .level-card {
     background: var(--surface); border-radius: var(--radius-card);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border); overflow: hidden;
     cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
     display: flex; flex-direction: column;
-    position: relative; min-height: 0;
+    position: relative; height: 200px;
   }
   .level-card:hover { box-shadow: var(--shadow); }
   .level-card:active { transform: scale(0.98); }
   .level-card.locked { opacity: 0.55; cursor: not-allowed; }
   .level-thumb {
-    width: 100%; height: 30vw; min-height: 90px; max-height: 140px;
-    flex-shrink: 0;
+    width: 100%; flex: 1 1 auto; min-height: 0;
     background: var(--surface-muted);
     display: flex; align-items: center; justify-content: center;
     overflow: hidden; position: relative;
@@ -1372,66 +1370,74 @@ const Game = {
     return true;
   },
   bindBoardGestures() {
-    let pinchDist = 0, lastScale = 1, panStart = null;
-    let pinchMid = null, pinchOffStart = null;
-    this.boardArea.addEventListener("pointerdown", (e) => {
-      const pts = this._ptrs();
-      if (pts.length === 2) {
-        pinchDist = Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
-        pinchMid = { x: (pts[0].x+pts[1].x)/2, y: (pts[0].y+pts[1].y)/2 };
-        pinchOffStart = { ox: this.boardOffsetX, oy: this.boardOffsetY };
-        lastScale = this.boardScale;
-        panStart = null;
-      } else if (pts.length === 1 && pinchDist === 0) {
+    // 用 touch 事件处理双指缩放/平移，避免与拼图块 pointer 拖拽冲突
+    let touchState = null;
+    this.boardArea.addEventListener("touchstart", (e) => {
+      if (e.touches.length === 2) {
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        touchState = {
+          dist,
+          scale: this.boardScale,
+          midX: (t0.clientX + t1.clientX) / 2,
+          midY: (t0.clientY + t1.clientY) / 2,
+          offX: this.boardOffsetX,
+          offY: this.boardOffsetY,
+        };
+      } else if (e.touches.length === 1) {
+        // 单指在板子空白区域平移（不拖拽拼图块时）
+        const t = e.touches[0];
         if (e.target === this.boardArea || e.target === this.board) {
-          panStart = { x: e.clientX, y: e.clientY, ox: this.boardOffsetX, oy: this.boardOffsetY };
+          touchState = {
+            pan: true,
+            startX: t.clientX,
+            startY: t.clientY,
+            offX: this.boardOffsetX,
+            offY: this.boardOffsetY,
+          };
         }
       }
-    });
-    this.boardArea.addEventListener("pointermove", (e) => {
-      const pts = this._ptrs();
-      if (pinchDist > 0 && pts.length === 2) {
-        const d = Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
-        const newScale = clamp(lastScale * (d / pinchDist), 0.3, 4);
-        const newMid = { x: (pts[0].x+pts[1].x)/2, y: (pts[0].y+pts[1].y)/2 };
-        // 以双指中点为中心缩放 + 平移
-        const dx = newMid.x - pinchMid.x;
-        const dy = newMid.y - pinchMid.y;
-        this.boardOffsetX = pinchOffStart.ox + dx;
-        this.boardOffsetY = pinchOffStart.oy + dy;
-        // 缩放时校正：保持中点对应的内容位置不变
-        const scaleDelta = newScale / this.boardScale;
+    }, { passive: true });
+    this.boardArea.addEventListener("touchmove", (e) => {
+      if (!touchState) return;
+      if (e.touches.length === 2 && !touchState.pan) {
+        e.preventDefault();
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+        const newScale = clamp(touchState.scale * (dist / touchState.dist), 0.3, 4);
+        const newMidX = (t0.clientX + t1.clientX) / 2;
+        const newMidY = (t0.clientY + t1.clientY) / 2;
+        const dx = newMidX - touchState.midX;
+        const dy = newMidY - touchState.midY;
         const rect = this.boardArea.getBoundingClientRect();
-        const cx = pinchMid.x - rect.left;
-        const cy = pinchMid.y - rect.top;
-        // 内容点相对于板原点的坐标（缩放前）
-        const contentX = (cx - this.boardOffsetX) / this.boardScale;
-        const contentY = (cy - this.boardOffsetY) / this.boardScale;
+        const cx = touchState.midX - rect.left;
+        const cy = touchState.midY - rect.top;
+        // 缩放前中点对应的内容坐标
+        const contentX = (cx - touchState.offX) / touchState.scale;
+        const contentY = (cy - touchState.offY) / touchState.scale;
         this.boardScale = newScale;
-        // 缩放后使中点仍对准同一内容点
+        // 缩放后保持中点对准同一内容点，同时跟随平移
         this.boardOffsetX = cx - contentX * newScale + dx;
         this.boardOffsetY = cy - contentY * newScale + dy;
         this.applyBoardTransform();
-      } else if (panStart && pts.length === 1 && e.isPrimary) {
-        this.boardOffsetX = panStart.ox + e.clientX - panStart.x;
-        this.boardOffsetY = panStart.oy + e.clientY - panStart.y;
+      } else if (touchState.pan && e.touches.length === 1) {
+        const t = e.touches[0];
+        this.boardOffsetX = touchState.offX + t.clientX - touchState.startX;
+        this.boardOffsetY = touchState.offY + t.clientY - touchState.startY;
         this.applyBoardTransform();
       }
-    });
-    const end = (e) => {
-      const pts = this._ptrs();
-      if (pts.length < 2) { pinchDist = 0; pinchMid = null; pinchOffStart = null; }
-      if (pts.length === 0) { pinchDist = 0; panStart = null; }
-      if (e.isPrimary) panStart = null;
+    }, { passive: false });
+    const touchEnd = (e) => {
+      if (e.touches.length === 0) touchState = null;
+      else if (e.touches.length === 1) touchState = null;
     };
-    this.boardArea.addEventListener("pointerup", end);
-    this.boardArea.addEventListener("pointercancel", end);
-    this.boardArea.addEventListener("pointerleave", end);
+    this.boardArea.addEventListener("touchend", touchEnd);
+    this.boardArea.addEventListener("touchcancel", touchEnd);
+    // 鼠标滚轮缩放（桌面端）
     this.boardArea.addEventListener("wheel", (e) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       const newScale = clamp(this.boardScale * delta, 0.3, 4);
-      // 以鼠标位置为中心缩放
       const rect = this.boardArea.getBoundingClientRect();
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
@@ -1442,6 +1448,24 @@ const Game = {
       this.boardOffsetY = cy - contentY * newScale;
       this.applyBoardTransform();
     }, { passive: false });
+    // 鼠标拖拽平移（桌面端）
+    let mousePan = null;
+    this.boardArea.addEventListener("mousedown", (e) => {
+      if (e.target === this.boardArea || e.target === this.board) {
+        mousePan = { x: e.clientX, y: e.clientY, ox: this.boardOffsetX, oy: this.boardOffsetY };
+        e.preventDefault();
+      }
+    });
+    this.boardArea.addEventListener("mousemove", (e) => {
+      if (mousePan) {
+        this.boardOffsetX = mousePan.ox + e.clientX - mousePan.x;
+        this.boardOffsetY = mousePan.oy + e.clientY - mousePan.y;
+        this.applyBoardTransform();
+      }
+    });
+    const mouseEnd = () => { mousePan = null; };
+    this.boardArea.addEventListener("mouseup", mouseEnd);
+    this.boardArea.addEventListener("mouseleave", mouseEnd);
   },
   _ptrs: () => [],
 };
