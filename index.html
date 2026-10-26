@@ -509,10 +509,11 @@ function generateDefaultImage(seed) {
 // ---------- 难度与关卡定义（v3 新增） ----------
 // 每档 3 关，共 9 关；关卡 ID = `${diff}_${n}`
 // 关卡图片：9 关复用 6 张图（nightmare 复用 easy/hard 的图，靠难度差异区分）
+// targetPieces：方案 A 自适应网格的目标块数，cols/rows 会在 loadLevel 时按图片比例重算
 const DIFFICULTIES = {
-  easy:      { hexW: 92, groupSize: 12, preview: true,  label: "简单",   cols: [7, 6, 7], rows: [6, 5, 5] },  // 约 42/30/35 块
-  hard:      { hexW: 64, groupSize: 17, preview: true,  label: "困难",   cols: [9, 10, 10], rows: [8, 7, 8] },  // 约 72/70/80 块
-  nightmare: { hexW: 64, groupSize: 17, preview: false, label: "噩梦",   cols: [9, 10, 10], rows: [8, 7, 8] },  // 同困难块数，无淡原图
+  easy:      { hexW: 92, groupSize: 12, preview: true,  label: "简单",   targetPieces: 35 },  // 约 35 块
+  hard:      { hexW: 64, groupSize: 17, preview: true,  label: "困难",   targetPieces: 75 },  // 约 75 块
+  nightmare: { hexW: 64, groupSize: 17, preview: false, label: "噩梦",   targetPieces: 75 },  // 同困难块数，无淡原图
 };
 const LEVEL_NAMES = ["晨光", "暮色", "星河"];
 // 每关对应的图片（images/ 目录下）；9 关映射到 6 张图，噩梦难度复用前 3 张
@@ -530,11 +531,12 @@ const LEVELS = [];
       id,
       name: LEVEL_NAMES[i],
       difficulty: diff,
-      cols: cfg.cols[i],
-      rows: cfg.rows[i],
+      // cols/rows 不再硬编码，loadLevel 时按图片比例自适应计算
+      cols: 0, rows: 0,  // 占位，loadLevel 会覆盖
       hexW: cfg.hexW,
       groupSize: cfg.groupSize,
       preview: cfg.preview,
+      targetPieces: cfg.targetPieces,
       seed: i,
       image: LEVEL_IMAGES[id],  // 关卡图片路径（v3 新增，优先于程序生成）
     });
@@ -542,7 +544,8 @@ const LEVELS = [];
 });
 const findLevelById = (id) => LEVELS.find(l => l.id === id);
 const findLevelsByDiff = (diff) => LEVELS.filter(l => l.difficulty === diff);
-const totalOf = (lv) => lv.cols * lv.rows;
+// totalOf：优先用实际 cols/rows（loadLevel 后），否则用 targetPieces 估算
+const totalOf = (lv) => (lv.cols && lv.rows) ? lv.cols * lv.rows : lv.targetPieces;
 
 // ---------- 六边形几何（沿用 v2，平顶 odd-q offset） ----------
 const Hex = {
@@ -567,6 +570,42 @@ const Hex = {
     return { w, h };
   },
 };
+
+// ---------- 根据图片宽高比自适应计算六边形网格 cols/rows（方案 A） ----------
+// 目标：让网格总尺寸的宽高比 ≈ 图片宽高比，使 buildImageCanvas 的 cover 裁剪量最小
+// 六边形平顶 odd-q offset 网格总尺寸：w = (cols-1)*0.75*hexW + hexW, h = rows*0.866*hexW + 0.433*hexW
+// 近似宽高比 ≈ (0.75*cols + 0.25) / (0.866*rows + 0.433)
+// 让该比例 ≈ imgW/imgH，在目标总块数附近找最优 cols×rows
+function computeGridFromImage(imgW, imgH, targetPieces) {
+  const imgRatio = imgW / imgH;  // 图片宽/高
+  // 六边形网格比例修正系数：网格宽/高 ≈ (0.75*cols)/(0.866*rows)
+  // 要让 网格比 = 图片比 => cols/rows ≈ imgRatio * (0.866/0.75) = imgRatio * 1.1547
+  const targetColsOverRows = imgRatio * (0.866 / 0.75);
+  // 在目标块数附近搜索：cols*rows ≈ targetPieces，cols/rows ≈ targetColsOverRows
+  // 理想 cols = sqrt(targetPieces * targetColsOverRows), rows = sqrt(targetPieces / targetColsOverRows)
+  const idealCols = Math.sqrt(targetPieces * targetColsOverRows);
+  const idealRows = Math.sqrt(targetPieces / targetColsOverRows);
+  // 在理想值附近 ±2 范围搜索，找实际块数最接近目标且比例最接近的
+  let best = null;
+  const c0 = Math.max(3, Math.round(idealCols) - 2);
+  const c1 = Math.round(idealCols) + 2;
+  const r0 = Math.max(3, Math.round(idealRows) - 2);
+  const r1 = Math.round(idealRows) + 2;
+  for (let c = c0; c <= c1; c++) {
+    for (let r = r0; r <= r1; r++) {
+      const pieces = c * r;
+      // 评分：块数偏差（权重 1）+ 比例偏差（权重 2，比例更重要）
+      const pieceDiff = Math.abs(pieces - targetPieces) / targetPieces;
+      const gridRatio = (0.75 * c) / (0.866 * r);
+      const ratioDiff = Math.abs(gridRatio - imgRatio) / imgRatio;
+      const score = pieceDiff + ratioDiff * 2;
+      if (!best || score < best.score) {
+        best = { cols: c, rows: r, pieces, score, gridRatio };
+      }
+    }
+  }
+  return best || { cols: Math.round(idealCols), rows: Math.round(idealRows), pieces: targetPieces };
+}
 
 // ---------- 游戏核心（沿用 v2 + 难度/preview 扩展） ----------
 const Game = {
@@ -639,10 +678,9 @@ const Game = {
       }
     } catch (e) {}
 
-    this.loadLevel(startDiff, startIdx, false);
+    this.loadLevel(startDiff, startIdx, false, true);
     this.updateDifficultyUI();
-    // 尝试恢复存档（如果有 puzzle_progress_${level.id}）
-    this.loadProgress(false);
+    // loadProgress 已在 loadLevel 的 finalize 末尾自动调用（异步完成后）
 
     // 启动路由（最后调用，确保 Game 已就绪）
     Router.init();
@@ -700,23 +738,34 @@ const Game = {
     return cv;
   },
 
-  // ====== 关卡加载（v2 + 难度/preview 扩展 + v3 图片资源接入） ======
-  loadLevel(diff, idx, keepUserImage = false) {
+  // ====== 关卡加载（v2 + 难度/preview 扩展 + v3 图片资源接入 + 方案A 自适应网格） ======
+  // autoLoadProgress：loadLevel 异步完成后是否自动尝试恢复存档（init/jumpTo 用）
+  loadLevel(diff, idx, keepUserImage = false, autoLoadProgress = false) {
     const levelsInDiff = findLevelsByDiff(diff);
     this.currentDifficulty = diff;
     this.levelIdx = ((idx % levelsInDiff.length) + levelsInDiff.length) % levelsInDiff.length;
     this.level = levelsInDiff[this.levelIdx];
 
-    // hexW 来自关卡配置（不再硬编码 90）
+    // hexW 来自关卡配置
     this.hexW = this.level.hexW;
-    this.metrics = Hex.metrics(this.hexW);
-    const sz = Hex.totalSize(this.level.cols, this.level.rows, this.metrics);
-    this.totalW = Math.round(sz.w);
-    this.totalH = Math.round(sz.h);
 
     // 图片源优先级：用户上传 > 关卡图片(images/) > 程序生成
-    // 异步加载图片后继续 buildImageCanvas + 构造碎片
+    // 异步加载图片后：①按图片比例自适应计算 cols/rows ②算 totalW/totalH ③buildImageCanvas + 构造碎片
     const finalize = (src, srcLabel) => {
+      // 方案 A：按图片实际尺寸自适应计算 cols/rows
+      const sw = src.width || src.naturalWidth || 720;
+      const sh = src.height || src.naturalHeight || 540;
+      const grid = computeGridFromImage(sw, sh, this.level.targetPieces);
+      this.level.cols = grid.cols;
+      this.level.rows = grid.rows;
+      console.log(`[loadLevel] ${this.level.id} 图片 ${sw}x${sh} -> 网格 ${grid.cols}x${grid.rows}=${grid.pieces}块 (目标${this.level.targetPieces})`);
+
+      // 算 totalW/totalH（依赖 cols/rows）
+      this.metrics = Hex.metrics(this.hexW);
+      const sz = Hex.totalSize(this.level.cols, this.level.rows, this.metrics);
+      this.totalW = Math.round(sz.w);
+      this.totalH = Math.round(sz.h);
+
       this.imgCanvas = this.buildImageCanvas(src);
       this.imgDataURL = this.imgCanvas.toDataURL("image/jpeg", 0.85);
       this.imgSrcLabel = srcLabel;  // 记录图源类型（用于成就页显示原图）
@@ -726,6 +775,8 @@ const Game = {
       this.updateProgress();
       ProgressManager.updateSubTitle();
       $("loading").classList.remove("show");
+      // 异步完成后自动恢复存档（init/jumpTo 场景）
+      if (autoLoadProgress) this.loadProgress(false);
     };
 
     if (keepUserImage && this.userImage) {
@@ -1142,10 +1193,13 @@ const Game = {
   startTimer() { clearInterval(this._timer); this._timer = setInterval(() => {}, 1000); },
 
   // ====== localStorage（v2 + difficulty 字段，键名沿用 puzzle_progress_${levelId}） ======
+  // 方案 A：快照增加 cols/rows/imageW/imageH，加载时校验网格是否匹配，不匹配则丢弃（图片变了）
   saveProgress() {
     if (this.placedCount === this.pieceList.length) return;
     const snap = {
       levelId: this.level.id, difficulty: this.currentDifficulty,
+      cols: this.level.cols, rows: this.level.rows,  // 网格尺寸（方案 A 存档兼容）
+      imageW: this.imgCanvas ? this.imgCanvas.width : 0, imageH: this.imgCanvas ? this.imgCanvas.height : 0,
       placedCorrect: [], placedWrong: [],
       groupIndex: this.groupIndex, moves: this.moves,
       startTime: this.startTime, updatedAt: Date.now(),
@@ -1188,11 +1242,19 @@ const Game = {
 
   // ====== 加载存档（v3 新增，沿用 v2 saveProgress 的快照结构） ======
   // manual=true 时弹 toast；false 时静默（启动恢复用）
+  // 方案 A：校验快照的 cols/rows/imageW/imageH 与当前关卡是否匹配，不匹配则丢弃旧存档
   loadProgress(manual = false) {
     let snap = null;
     try { snap = JSON.parse(localStorage.getItem(`puzzle_progress_${this.level.id}`) || "null"); } catch(e) {}
     if (!snap) {
       if (manual) toast("当前关没有存档");
+      return false;
+    }
+    // 方案 A 存档校验：网格尺寸或图片尺寸不匹配，说明图片变了，旧存档作废
+    if (snap.cols && snap.rows && (snap.cols !== this.level.cols || snap.rows !== this.level.rows)) {
+      console.warn(`[loadProgress] 存档网格 ${snap.cols}x${snap.rows} 与当前 ${this.level.cols}x${this.level.rows} 不匹配，丢弃旧存档`);
+      localStorage.removeItem(`puzzle_progress_${this.level.id}`);
+      if (manual) toast("图片已更新，旧存档已清除");
       return false;
     }
     // 重置当前关状态后再应用快照
@@ -1464,9 +1526,9 @@ const ProgressManager = {
   jumpTo(lv) {
     location.hash = "#/game";
     // 等 Router dispatch 完成、view-game 显示后再 layout
+    // loadLevel 异步完成后会自动调 loadProgress（autoLoadProgress=true）
     setTimeout(() => {
-      Game.loadLevel(lv.difficulty, findLevelsByDiff(lv.difficulty).indexOf(lv), false);
-      Game.loadProgress(false);
+      Game.loadLevel(lv.difficulty, findLevelsByDiff(lv.difficulty).indexOf(lv), false, true);
     }, 50);
   },
 
