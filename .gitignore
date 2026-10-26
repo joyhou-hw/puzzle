@@ -1,0 +1,12 @@
+# 临时与构建产物
+*.log
+.DS_Store
+node_modules/
+.wrangler/
+.trae-html-share-packages/
+.screenshots/
+.uploads/
+
+# IDE
+.idea/
+.vscode/

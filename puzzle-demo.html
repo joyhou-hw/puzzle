@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0f1216">
+<title>像素拼图 · Demo</title>
+<style>
+  /* === 设计令牌 === */
+  :root {
+    color-scheme: light;
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-muted: #eef0f3;
+    --text: #171717;
+    --text-muted: #52525b;
+    --border: rgba(23,23,23,0.10);
+    --brand: #0fdc78;
+    --brand-soft: #e5fff2;
+    --brand-text: #004d26;
+    --danger: #e8463a;
+    --warning: #efaa17;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    --radius: 8px;
+    --radius-card: 12px;
+    --font-sans: -apple-system, "SF Pro Text", "PingFang SC", system-ui, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #0f1216;
+      --surface: #1a1d22;
+      --surface-muted: #23272d;
+      --text: #e5e5e5;
+      --text-muted: #a1a1aa;
+      --border: rgba(229,229,229,0.12);
+      --brand: #32f08c;
+      --brand-soft: #004d26;
+      --brand-text: #e5fff2;
+      --shadow: 0 2px 12px rgba(0,0,0,0.4);
+    }
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font: 14px/1.5 var(--font-sans);
+    overflow: hidden; overscroll-behavior: none;
+  }
+  body { display: flex; flex-direction: column; }
+
+  /* === 顶栏 === */
+  .topbar {
+    flex: 0 0 auto;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .topbar h1 {
+    font-size: 16px; font-weight: 600; margin: 0; flex: 0 0 auto;
+  }
+  .progress-wrap {
+    flex: 1 1 auto; display: flex; align-items: center; gap: 8px;
+    min-width: 0;
+  }
+  .progress-bar {
+    flex: 1 1 auto; height: 8px; border-radius: 999px;
+    background: var(--surface-muted); overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: var(--brand); border-radius: 999px;
+    transition: width 0.3s ease;
+  }
+  .progress-text {
+    font-size: 12px; color: var(--text-muted);
+    font-variant-numeric: tabular-nums; flex: 0 0 auto;
+  }
+  .btn {
+    flex: 0 0 auto;
+    padding: 8px 14px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); font: inherit; font-size: 13px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    transition: background 0.15s;
+  }
+  .btn:active { background: var(--surface-muted); }
+  .btn-primary { background: var(--brand); color: var(--brand-on, #004d26); border-color: var(--brand); font-weight: 600; }
+  .btn-primary:active { filter: brightness(0.95); }
+
+  /* === 拼图板区 === */
+  .board-area {
+    flex: 1 1 auto; position: relative; overflow: hidden;
+    background:
+      linear-gradient(45deg, var(--surface-muted) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--surface-muted) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--surface-muted) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--surface-muted) 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    touch-action: none;
+  }
+  .board {
+    position: absolute; top: 0; left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+  .board-inner {
+    position: relative;
+    background: rgba(0,0,0,0.04);
+    box-shadow: var(--shadow);
+  }
+  .slot {
+    position: absolute;
+    border: 1px dashed rgba(0,0,0,0.10);
+    box-sizing: border-box;
+  }
+  .board-img-preview {
+    position: absolute; top: 0; left: 0;
+    opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .board-area.show-preview .board-img-preview { opacity: 0.35; }
+
+  /* === 碎片 === */
+  .piece {
+    position: absolute;
+    background-repeat: no-repeat;
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    transition: box-shadow 0.15s, transform 0.15s ease;
+    will-change: transform, left, top;
+  }
+  .piece:active { cursor: grabbing; }
+  .piece.dragging {
+    cursor: grabbing;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    z-index: 1000;
+    transition: none;
+  }
+  .piece.locked {
+    cursor: default;
+    box-shadow: none;
+    border-radius: 0;
+    transition: left 0.2s ease, top 0.2s ease;
+  }
+  .piece.wrong {
+    box-shadow: 0 0 0 2px var(--danger), 0 1px 3px rgba(0,0,0,0.25);
+    animation: shake 0.3s;
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+  .piece.snap-in { animation: snap 0.25s ease; }
+  @keyframes snap {
+    0% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+  }
+
+  /* === 池子 === */
+  .pool {
+    flex: 0 0 auto;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 10px 14px max(10px, env(safe-area-inset-bottom));
+  }
+  .pool-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px; gap: 8px;
+  }
+  .pool-title {
+    font-size: 12px; color: var(--text-muted);
+    font-weight: 500;
+  }
+  .pool-track {
+    display: flex; gap: 8px;
+    overflow-x: auto; overflow-y: hidden;
+    padding: 4px 2px 8px;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    min-height: 76px;
+  }
+  .pool-track::-webkit-scrollbar { height: 6px; }
+  .pool-track::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .pool-piece {
+    flex: 0 0 auto;
+    width: 56px; height: 56px;
+    background-repeat: no-repeat;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    cursor: grab;
+    touch-action: none;
+    transition: transform 0.12s;
+  }
+  .pool-piece:active { cursor: grabbing; transform: scale(1.05); }
+  .pool-empty {
+    color: var(--text-muted); font-size: 12px;
+    padding: 20px; text-align: center; flex: 1;
+  }
+
+  /* === 弹窗 === */
+  .modal-mask {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2000; padding: 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .modal-mask.show { opacity: 1; pointer-events: auto; }
+  .modal {
+    background: var(--surface); border-radius: var(--radius-card);
+    padding: 24px; max-width: 360px; width: 100%;
+    box-shadow: var(--shadow); text-align: center;
+  }
+  .modal h2 { margin: 0 0 8px; font-size: 20px; }
+  .modal p { color: var(--text-muted); margin: 0 0 20px; font-size: 13px; }
+  .modal .stats {
+    display: flex; justify-content: center; gap: 20px;
+    margin-bottom: 20px; font-size: 12px;
+  }
+  .modal .stat-num { font-size: 22px; font-weight: 600; color: var(--brand); }
+  .modal .stat-label { color: var(--text-muted); }
+  .modal-actions { display: flex; gap: 10px; justify-content: center; }
+
+  /* === 提示气泡 === */
+  .toast {
+    position: fixed; bottom: 120px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0,0,0,0.8); color: #fff;
+    padding: 8px 16px; border-radius: 999px;
+    font-size: 12px; opacity: 0;
+    pointer-events: none; z-index: 1500;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* === 完整图展示 === */
+  .reveal {
+    position: fixed; inset: 0; z-index: 1800;
+    background: rgba(0,0,0,0.92);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.4s;
+  }
+  .reveal.show { opacity: 1; pointer-events: auto; }
+  .reveal img { max-width: 90vw; max-height: 70vh; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
+  .reveal h2 { color: #fff; margin: 16px 0 4px; font-size: 20px; }
+  .reveal p { color: rgba(255,255,255,0.6); margin: 0 0 20px; font-size: 13px; }
+
+  @media (max-width: 480px) {
+    .topbar h1 { font-size: 14px; }
+    .btn { padding: 7px 10px; font-size: 12px; }
+    .pool-piece { width: 50px; height: 50px; }
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>像素拼图</h1>
+    <div class="progress-wrap">
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <span class="progress-text" id="progressText">0 / 0</span>
+    </div>
+    <button class="btn" id="hintBtn" title="按住查看原图">原图</button>
+    <button class="btn" id="refreshBtn">刷新</button>
+  </header>
+
+  <main class="board-area" id="boardArea">
+    <div class="board" id="board">
+      <div class="board-inner" id="boardInner"></div>
+      <img class="board-img-preview" id="boardPreview" alt="">
+    </div>
+  </main>
+
+  <footer class="pool">
+    <div class="pool-head">
+      <span class="pool-title" id="poolTitle">碎片池 · 第 1 组</span>
+      <button class="btn" id="poolRefreshBtn">换一组</button>
+    </div>
+    <div class="pool-track" id="poolTrack"></div>
+  </footer>
+
+  <!-- 通关弹窗 -->
+  <div class="modal-mask" id="winModal">
+    <div class="modal">
+      <h2>通关！</h2>
+      <p>已收藏到图库</p>
+      <div class="stats">
+        <div>
+          <div class="stat-num" id="statTime">0:00</div>
+          <div class="stat-label">用时</div>
+        </div>
+        <div>
+          <div class="stat-num" id="statMoves">0</div>
+          <div class="stat-label">步数</div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="nextLevelBtn">下一关</button>
+        <button class="btn" id="replayBtn">再看一次</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 完整图展示 -->
+  <div class="reveal" id="reveal">
+    <img id="revealImg" alt="完整图">
+    <h2 id="revealTitle">完成</h2>
+    <p>已收藏到图库</p>
+    <button class="btn btn-primary" id="revealCloseBtn">继续</button>
+  </div>
+
+  <!-- 提示 -->
+  <div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ============================================================
+ * 像素拼图 · 单文件 Demo
+ * 方案 A：纯原生 JS + DOM + Pointer Events
+ * ============================================================ */
+
+// ---------- 工具 ----------
+const $ = (id) => document.getElementById(id);
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const rand = (n) => Math.floor(Math.random() * n);
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = rand(i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function toast(msg, ms = 1600) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => el.classList.remove("show"), ms);
+}
+
+// ---------- 程序化生成测试图（无网络依赖） ----------
+function generateTestImage(seed) {
+  const W = 720, H = 540;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d");
+
+  // 渐变背景
+  const palettes = [
+    ["#ff6b6b", "#feca57", "#48dbfb", "#1dd1a1", "#5f27cd"],
+    ["#00d2ff", "#3a47d5", "#ee9ca7", "#ffdde1", "#093028"],
+    ["#fa709a", "#fee140", "#a8edea", "#fed6e3", "#84fab0"],
+    ["#f7971e", "#ffd200", "#fc6076", "#ff9a44", "#48b1bf"],
+  ];
+  const pal = palettes[seed % palettes.length];
+
+  // 渐变底
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, pal[0]);
+  g.addColorStop(0.5, pal[1]);
+  g.addColorStop(1, pal[2]);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // 几何图案
+  for (let i = 0; i < 30; i++) {
+    ctx.globalAlpha = 0.25 + Math.random() * 0.4;
+    ctx.fillStyle = pal[rand(pal.length)];
+    const x = Math.random() * W, y = Math.random() * H;
+    const r = 30 + Math.random() * 80;
+    if (i % 3 === 0) {
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    } else if (i % 3 === 1) {
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(x, y - r);
+      ctx.lineTo(x + r, y + r);
+      ctx.lineTo(x - r, y + r);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // 网格线（提示切割边界）
+  ctx.strokeStyle = "rgba(255,255,255,0.15)";
+  ctx.lineWidth = 1;
+  return cv;
+}
+
+// ---------- 关卡定义 ----------
+const LEVELS = [
+  { id: "L1", name: "晨光",   cols: 8,  rows: 6,  groupSize: 12 },
+  { id: "L2", name: "暮色",   cols: 10, rows: 8,  groupSize: 15 },
+  { id: "L3", name: "星河",   cols: 12, rows: 9,  groupSize: 18 },
+];
+
+// ---------- 游戏核心 ----------
+const Game = {
+  // 关卡参数
+  level: null,
+  imgCanvas: null,
+  imgDataURL: "",
+  pieceW: 0,
+  pieceH: 0,
+  boardW: 0,
+  boardH: 0,
+
+  // 碎片状态：id -> piece 对象
+  pieces: {},
+  pieceList: [],
+
+  // 分组
+  currentGroup: [],
+  groupIndex: 0,
+
+  // 统计
+  placedCount: 0,
+  moves: 0,
+  startTime: 0,
+
+  // 板子变换
+  boardScale: 1,
+  boardOffsetX: 0,
+  boardOffsetY: 0,
+
+  // DOM 引用
+  boardArea: null,
+  board: null,
+  boardInner: null,
+  boardPreview: null,
+  poolTrack: null,
+
+  init() {
+    this.boardArea = $("boardArea");
+    this.board = $("board");
+    this.boardInner = $("boardInner");
+    this.boardPreview = $("boardPreview");
+    this.poolTrack = $("poolTrack");
+
+    // 事件绑定
+    $("refreshBtn").addEventListener("click", () => this.refreshGroup());
+    $("poolRefreshBtn").addEventListener("click", () => this.refreshGroup());
+    $("nextLevelBtn").addEventListener("click", () => this.nextLevel());
+    $("replayBtn").addEventListener("click", () => {
+      $("winModal").classList.remove("show");
+      $("reveal").classList.add("show");
+    });
+    $("revealCloseBtn").addEventListener("click", () => $("reveal").classList.remove("show"));
+
+    // 原图提示（按住显示）
+    const hintBtn = $("hintBtn");
+    const showPreview = () => this.boardArea.classList.add("show-preview");
+    const hidePreview = () => this.boardArea.classList.remove("show-preview");
+    hintBtn.addEventListener("pointerdown", showPreview);
+    hintBtn.addEventListener("pointerup", hidePreview);
+    hintBtn.addEventListener("pointerleave", hidePreview);
+    hintBtn.addEventListener("pointercancel", hidePreview);
+
+    // 板子双指缩放/平移
+    this.bindBoardGestures();
+
+    // 启动第 0 关
+    this.loadLevel(0);
+    window.addEventListener("resize", () => this.layoutBoard());
+  },
+
+  // ====== 关卡加载 ======
+  loadLevel(idx) {
+    this.level = LEVELS[idx % LEVELS.length];
+    this.levelIdx = idx % LEVELS.length;
+
+    // 生成图片
+    this.imgCanvas = generateTestImage(idx);
+    this.imgDataURL = this.imgCanvas.toDataURL("image/jpeg", 0.85);
+
+    // 切割参数
+    const totalW = this.imgCanvas.width;
+    const totalH = this.imgCanvas.height;
+    this.pieceW = Math.floor(totalW / this.level.cols);
+    this.pieceH = Math.floor(totalH / this.level.rows);
+    this.boardW = this.pieceW * this.level.cols;
+    this.boardH = this.pieceH * this.level.rows;
+
+    // 清空旧状态
+    this.pieces = {};
+    this.pieceList = [];
+    this.currentGroup = [];
+    this.groupIndex = 0;
+    this.placedCount = 0;
+    this.moves = 0;
+    this.startTime = Date.now();
+
+    // 构造所有碎片
+    for (let r = 0; r < this.level.rows; r++) {
+      for (let c = 0; c < this.level.cols; c++) {
+        const id = `${r}_${c}`;
+        const p = {
+          id, row: r, col: c,
+          correctX: c * this.pieceW,
+          correctY: r * this.pieceH,
+          status: "pooled", // pooled | placed_correct | placed_wrong
+          el: null,
+          wrongX: 0, wrongY: 0, // 放错时的板内坐标
+        };
+        this.pieces[id] = p;
+        this.pieceList.push(p);
+      }
+    }
+
+    // 清空 DOM
+    this.boardInner.innerHTML = "";
+    this.poolTrack.innerHTML = "";
+
+    // 构造板子内部：网格槽 + 预览图
+    this.boardInner.style.width = this.boardW + "px";
+    this.boardInner.style.height = this.boardH + "px";
+
+    // 槽位（虚线网格）
+    for (let r = 0; r < this.level.rows; r++) {
+      for (let c = 0; c < this.level.cols; c++) {
+        const slot = document.createElement("div");
+        slot.className = "slot";
+        slot.style.left = (c * this.pieceW) + "px";
+        slot.style.top = (r * this.pieceH) + "px";
+        slot.style.width = this.pieceW + "px";
+        slot.style.height = this.pieceH + "px";
+        this.boardInner.appendChild(slot);
+      }
+    }
+
+    // 预览图
+    this.boardPreview.src = this.imgDataURL;
+    this.boardPreview.style.width = this.boardW + "px";
+    this.boardPreview.style.height = this.boardH + "px";
+
+    this.layoutBoard();
+
+    // 尝试恢复进度
+    const restored = this.loadProgress();
+    if (restored) {
+      this.dealNextGroup(true);
+    } else {
+      this.dealNextGroup(true);
+    }
+    this.updateProgress();
+    this.startTimer();
+  },
+
+  // 恢复进度快照
+  loadProgress() {
+    try {
+      const raw = localStorage.getItem(`puzzle_progress_${this.level.id}`);
+      if (!raw) return false;
+      const snap = JSON.parse(raw);
+      if (!snap || snap.levelId !== this.level.id) return false;
+
+      this.moves = snap.moves || 0;
+      this.startTime = snap.startTime || Date.now();
+      this.groupIndex = snap.groupIndex || 0;
+
+      // 恢复已锁定碎片
+      (snap.placedCorrect || []).forEach(id => {
+        const p = this.pieces[id];
+        if (!p) return;
+        const el = document.createElement("div");
+        el.className = "piece locked";
+        el.style.width = this.pieceW + "px";
+        el.style.height = this.pieceH + "px";
+        el.style.backgroundImage = `url(${this.imgDataURL})`;
+        el.style.backgroundSize = `${this.boardW}px ${this.boardH}px`;
+        el.style.backgroundPosition = `-${p.col * this.pieceW}px -${p.row * this.pieceH}px`;
+        el.style.left = p.correctX + "px";
+        el.style.top = p.correctY + "px";
+        this.boardInner.appendChild(el);
+        p.el = el;
+        p.status = "placed_correct";
+        this.placedCount++;
+      });
+
+      // 恢复放错碎片
+      (snap.placedWrong || []).forEach(item => {
+        const p = this.pieces[item.id];
+        if (!p) return;
+        const el = document.createElement("div");
+        el.className = "piece wrong";
+        el.style.width = this.pieceW + "px";
+        el.style.height = this.pieceH + "px";
+        el.style.backgroundImage = `url(${this.imgDataURL})`;
+        el.style.backgroundSize = `${this.boardW}px ${this.boardH}px`;
+        el.style.backgroundPosition = `-${p.col * this.pieceW}px -${p.row * this.pieceH}px`;
+        el.style.left = item.x + "px";
+        el.style.top = item.y + "px";
+        this.boardInner.appendChild(el);
+        p.el = el;
+        p.status = "placed_wrong";
+        p.wrongX = item.x;
+        p.wrongY = item.y;
+        this.bindDrag(el, p, "board");
+      });
+
+      if (this.placedCount > 0) toast(`已恢复 ${this.placedCount} 块进度`, 2000);
+      return true;
+    } catch(e) {
+      console.warn("load progress failed", e);
+      return false;
+    }
+  },
+
+  // 计算板子初始缩放与居中
+  layoutBoard() {
+    const aw = this.boardArea.clientWidth;
+    const ah = this.boardArea.clientHeight;
+    const sx = aw / this.boardW;
+    const sy = ah / this.boardH;
+    const s = Math.min(sx, sy) * 0.92;
+    this.boardScale = s;
+    // 居中
+    this.boardOffsetX = (aw - this.boardW * s) / 2;
+    this.boardOffsetY = (ah - this.boardH * s) / 2;
+    this.applyBoardTransform();
+  },
+
+  applyBoardTransform() {
+    this.board.style.transform =
+      `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.boardScale})`;
+  },
+
+  // ====== 发牌 ======
+  dealNextGroup(isFirst = false) {
+    // 取出所有未归位的碎片
+    const remaining = this.pieceList.filter(p => p.status === "pooled");
+    if (remaining.length === 0) {
+      this.checkWin();
+      return;
+    }
+    // 随机取 groupSize 个
+    const n = Math.min(this.level.groupSize, remaining.length);
+    this.currentGroup = shuffle(remaining).slice(0, n);
+    this.groupIndex++;
+    this.renderPool();
+    $("poolTitle").textContent = `碎片池 · 第 ${this.groupIndex} 组（${n} 块）`;
+    if (!isFirst) toast(`第 ${this.groupIndex} 组已发牌`);
+  },
+
+  // 刷新：回收放错的 + 池中未归位的，重新发一组
+  refreshGroup() {
+    // 回收 placed_wrong
+    this.pieceList.forEach(p => {
+      if (p.status === "placed_wrong") {
+        // 移除板上的 DOM
+        if (p.el) { p.el.remove(); p.el = null; }
+        p.status = "pooled";
+      }
+    });
+    // 当前池子里的（DOM 在池子里）也回收，重新发
+    this.currentGroup = [];
+    this.dealNextGroup();
+    this.saveProgress();
+  },
+
+  // ====== 渲染池子 ======
+  renderPool() {
+    this.poolTrack.innerHTML = "";
+    if (this.currentGroup.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "pool-empty";
+      empty.textContent = "池子空了，拼完即可通关";
+      this.poolTrack.appendChild(empty);
+      return;
+    }
+    // 池子里的碎片用小尺寸显示
+    const poolPieceSize = 56;
+    this.currentGroup.forEach(p => {
+      const el = document.createElement("div");
+      el.className = "pool-piece";
+      el.style.backgroundImage = `url(${this.imgDataURL})`;
+      el.style.backgroundSize = `${this.boardW}px ${this.boardH}px`;
+      el.style.backgroundPosition = `-${p.col * this.pieceW}px -${p.row * this.pieceH}px`;
+      el.style.width = poolPieceSize + "px";
+      el.style.height = poolPieceSize + "px";
+      el.dataset.pieceId = p.id;
+      // 池子里 background-size 需要按比例缩放
+      const sx = poolPieceSize / this.pieceW;
+      el.style.backgroundSize = `${this.boardW * sx}px ${this.boardH * sx}px`;
+      el.style.backgroundPosition = `-${p.col * poolPieceSize}px -${p.row * poolPieceSize}px`;
+      p.el = el;
+      p.poolEl = el;
+      this.bindDrag(el, p, "pool");
+      this.poolTrack.appendChild(el);
+    });
+  },
+
+  // ====== 拖拽引擎 ======
+  bindDrag(el, piece, source) {
+    let dragging = false;
+    let startX = 0, startY = 0;
+    let originRect = null;
+    let ghostEl = null;
+    let pointerId = null;
+
+    el.addEventListener("pointerdown", (e) => {
+      if (piece.status === "placed_correct") return;
+      e.preventDefault();
+      pointerId = e.pointerId;
+      el.setPointerCapture(pointerId);
+      dragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      originRect = el.getBoundingClientRect();
+
+      // 创建拖拽幽灵元素（提升到 body 层级，固定定位）
+      ghostEl = el.cloneNode(true);
+      ghostEl.className = "piece dragging";
+      // 真实尺寸参与判定
+      ghostEl.style.width = this.pieceW + "px";
+      ghostEl.style.height = this.pieceH + "px";
+      ghostEl.style.backgroundSize = `${this.boardW}px ${this.boardH}px`;
+      ghostEl.style.backgroundPosition = `-${piece.col * this.pieceW}px -${piece.row * this.pieceH}px`;
+      ghostEl.style.position = "fixed";
+      ghostEl.style.left = originRect.left + "px";
+      ghostEl.style.top = originRect.top + "px";
+      ghostEl.style.zIndex = 1000;
+      ghostEl.style.pointerEvents = "none";
+      document.body.appendChild(ghostEl);
+
+      el.style.opacity = "0.3";
+    });
+
+    el.addEventListener("pointermove", (e) => {
+      if (!dragging || e.pointerId !== pointerId) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      ghostEl.style.left = (originRect.left + dx) + "px";
+      ghostEl.style.top = (originRect.top + dy) + "px";
+    });
+
+    const endDrag = (e) => {
+      if (!dragging || e.pointerId !== pointerId) return;
+      dragging = false;
+      try { el.releasePointerCapture(pointerId); } catch(_) {}
+      el.style.opacity = "1";
+
+      // 判定落点
+      const ghostRect = ghostEl.getBoundingClientRect();
+      const centerX = ghostRect.left + ghostRect.width / 2;
+      const centerY = ghostRect.top + ghostRect.height / 2;
+      ghostEl.remove();
+      ghostEl = null;
+
+      this.handleDrop(piece, centerX, centerY, source, el);
+    };
+
+    el.addEventListener("pointerup", endDrag);
+    el.addEventListener("pointercancel", endDrag);
+  },
+
+  // 处理松手判定
+  handleDrop(piece, clientX, clientY, source, originEl) {
+    this.moves++;
+    // 计算碎片中心在板内坐标系的位置
+    const boardRect = this.boardInner.getBoundingClientRect();
+    const insideBoard = (
+      clientX >= boardRect.left && clientX <= boardRect.right &&
+      clientY >= boardRect.top && clientY <= boardRect.bottom
+    );
+
+    if (!insideBoard) {
+      // 落在板外 → 视为放错，回到池子或留在原池
+      if (source === "pool") {
+        // 留在池子里（什么都不做）
+        toast("放回池子了");
+      } else {
+        // 板上的放错碎片被拖出板外 → 回收为池子
+        if (piece.el) { piece.el.remove(); piece.el = null; }
+        piece.status = "pooled";
+        // 加入当前组（若不在）
+        if (!this.currentGroup.includes(piece)) {
+          this.currentGroup.push(piece);
+        }
+        this.renderPool();
+      }
+      return;
+    }
+
+    // 板内坐标
+    const localX = (clientX - boardRect.left) / this.boardScale;
+    const localY = (clientY - boardRect.top) / this.boardScale;
+
+    // 找最近槽位
+    const col = clamp(Math.round(localX / this.pieceW - 0.5), 0, this.level.cols - 1);
+    const row = clamp(Math.round(localY / this.pieceH - 0.5), 0, this.level.rows - 1);
+
+    // 判定是否正确
+    const isCorrect = (col === piece.col && row === piece.row);
+    // 容差：碎片中心距正确槽位中心 < 半块
+    const correctCenterX = piece.correctX + this.pieceW / 2;
+    const correctCenterY = piece.correctY + this.pieceH / 2;
+    const dist = Math.hypot(localX - correctCenterX, localY - correctCenterY);
+    const tolerance = Math.min(this.pieceW, this.pieceH) * 0.5;
+
+    if (dist <= tolerance) {
+      this.lockPiece(piece, source, originEl);
+    } else {
+      this.placeWrong(piece, localX, localY, source, originEl);
+    }
+  },
+
+  // 锁定（正确）
+  lockPiece(piece, source, originEl) {
+    // 移除原 DOM
+    if (originEl && originEl.parentNode) originEl.remove();
+    if (piece.el && piece.el !== originEl) piece.el.remove();
+
+    // 在板内创建锁定元素
+    const el = document.createElement("div");
+    el.className = "piece locked snap-in";
+    el.style.width = this.pieceW + "px";
+    el.style.height = this.pieceH + "px";
+    el.style.backgroundImage = `url(${this.imgDataURL})`;
+    el.style.backgroundSize = `${this.boardW}px ${this.boardH}px`;
+    el.style.backgroundPosition = `-${piece.col * this.pieceW}px -${piece.row * this.pieceH}px`;
+    el.style.left = piece.correctX + "px";
+    el.style.top = piece.correctY + "px";
+    this.boardInner.appendChild(el);
+    piece.el = el;
+    piece.status = "placed_correct";
+    this.placedCount++;
+
+    // 从当前组移除
+    const i = this.currentGroup.indexOf(piece);
+    if (i >= 0) this.currentGroup.splice(i, 1);
+    this.renderPool();
+
+    this.updateProgress();
+    this.saveProgress();
+    this.checkAutoDeal();
+    this.checkWin();
+  },
+
+  // 放错（红边）
+  placeWrong(piece, localX, localY, source, originEl) {
+    if (originEl && originEl.parentNode) originEl.remove();
+    if (piece.el && piece.el !== originEl) piece.el.remove();
+
+    const el = document.createElement("div");
+    el.className = "piece wrong";
+    el.style.width = this.pieceW + "px";
+    el.style.height = this.pieceH + "px";
+    el.style.backgroundImage = `url(${this.imgDataURL})`;
+    el.style.backgroundSize = `${this.boardW}px ${this.boardH}px`;
+    el.style.backgroundPosition = `-${piece.col * this.pieceW}px -${piece.row * this.pieceH}px`;
+    // 落点位置（中心对齐松手点）
+    const px = localX - this.pieceW / 2;
+    const py = localY - this.pieceH / 2;
+    el.style.left = px + "px";
+    el.style.top = py + "px";
+    this.boardInner.appendChild(el);
+
+    piece.el = el;
+    piece.status = "placed_wrong";
+    piece.wrongX = px;
+    piece.wrongY = py;
+
+    // 绑定拖拽（可重拖）
+    this.bindDrag(el, piece, "board");
+
+    // 从池子组里移除（如果来自池子）
+    if (source === "pool") {
+      const i = this.currentGroup.indexOf(piece);
+      if (i >= 0) this.currentGroup.splice(i, 1);
+      this.renderPool();
+    }
+    this.saveProgress();
+  },
+
+  // ====== 自动续发 ======
+  checkAutoDeal() {
+    if (this.currentGroup.length === 0) {
+      const remaining = this.pieceList.filter(p => p.status === "pooled");
+      if (remaining.length > 0) {
+        setTimeout(() => this.dealNextGroup(), 250);
+      }
+    }
+  },
+
+  // ====== 通关检测 ======
+  checkWin() {
+    if (this.placedCount === this.pieceList.length) {
+      this.onWin();
+    }
+  },
+
+  onWin() {
+    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    $("statTime").textContent = `${m}:${s.toString().padStart(2, "0")}`;
+    $("statMoves").textContent = this.moves;
+
+    // 展示完整图
+    $("revealImg").src = this.imgDataURL;
+    $("revealTitle").textContent = this.level.name;
+
+    // 收藏到 localStorage
+    this.saveToGallery();
+
+    // 清除本关进度
+    localStorage.removeItem(`puzzle_progress_${this.level.id}`);
+
+    setTimeout(() => {
+      $("reveal").classList.add("show");
+      setTimeout(() => $("winModal").classList.add("show"), 400);
+    }, 500);
+  },
+
+  nextLevel() {
+    $("winModal").classList.remove("show");
+    $("reveal").classList.remove("show");
+    this.loadLevel(this.levelIdx + 1);
+  },
+
+  // ====== 进度条 ======
+  updateProgress() {
+    const total = this.pieceList.length;
+    const pct = total > 0 ? (this.placedCount / total * 100) : 0;
+    $("progressFill").style.width = pct + "%";
+    $("progressText").textContent = `${this.placedCount} / ${total}`;
+  },
+
+  startTimer() {
+    clearInterval(this._timer);
+    this._timer = setInterval(() => {
+      // 计时器仅展示用，通关时读取
+    }, 1000);
+  },
+
+  // ====== localStorage 进度 ======
+  saveProgress() {
+    if (this.placedCount === this.pieceList.length) return; // 通关不存
+    const snap = {
+      levelId: this.level.id,
+      levelIdx: this.levelIdx,
+      placedCorrect: [],
+      placedWrong: [],
+      groupIndex: this.groupIndex,
+      moves: this.moves,
+      startTime: this.startTime,
+      updatedAt: Date.now(),
+    };
+    this.pieceList.forEach(p => {
+      if (p.status === "placed_correct") snap.placedCorrect.push(p.id);
+      else if (p.status === "placed_wrong") {
+        snap.placedWrong.push({ id: p.id, x: p.wrongX, y: p.wrongY });
+      }
+    });
+    try {
+      localStorage.setItem(`puzzle_progress_${this.level.id}`, JSON.stringify(snap));
+    } catch(e) {}
+  },
+
+  saveToGallery() {
+    try {
+      const key = "puzzle_gallery";
+      let gallery = JSON.parse(localStorage.getItem(key) || "[]");
+      // 缩略图用小尺寸 dataURL
+      const tc = document.createElement("canvas");
+      tc.width = 120; tc.height = 90;
+      tc.getContext("2d").drawImage(this.imgCanvas, 0, 0, 120, 90);
+      gallery.push({
+        levelId: this.level.id,
+        name: this.level.name,
+        thumbnail: tc.toDataURL("image/jpeg", 0.7),
+        completedAt: Date.now(),
+      });
+      // 去重：同 levelId 只保留最新
+      const seen = new Set();
+      gallery = gallery.filter(g => {
+        if (seen.has(g.levelId)) return false;
+        seen.add(g.levelId); return true;
+      }).reverse();
+      localStorage.setItem(key, JSON.stringify(gallery));
+    } catch(e) { console.warn("gallery save failed", e); }
+  },
+
+  // ====== 板子手势（双指缩放 + 平移） ======
+  bindBoardGestures() {
+    let pinchDist = 0;
+    let lastScale = 1;
+    let panStart = null;
+
+    this.boardArea.addEventListener("pointerdown", (e) => {
+      if (e.isPrimary === false && pinchDist === 0) {
+        // 第二指落下，开始 pinch
+        const pts = this._activePointers();
+        if (pts.length === 2) {
+          pinchDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+          lastScale = this.boardScale;
+        }
+      } else if (e.isPrimary && pinchDist === 0) {
+        // 单指：板子平移（仅当不在碎片上时）
+        if (e.target === this.boardArea || e.target === this.board) {
+          panStart = { x: e.clientX, y: e.clientY, ox: this.boardOffsetX, oy: this.boardOffsetY };
+        }
+      }
+    });
+
+    this.boardArea.addEventListener("pointermove", (e) => {
+      if (pinchDist > 0) {
+        const pts = this._activePointers();
+        if (pts.length === 2) {
+          const d = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+          let s = lastScale * (d / pinchDist);
+          s = clamp(s, 0.3, 3);
+          this.boardScale = s;
+          this.applyBoardTransform();
+        }
+      } else if (panStart && e.isPrimary) {
+        const dx = e.clientX - panStart.x;
+        const dy = e.clientY - panStart.y;
+        this.boardOffsetX = panStart.ox + dx;
+        this.boardOffsetY = panStart.oy + dy;
+        this.applyBoardTransform();
+      }
+    });
+
+    const endGesture = (e) => {
+      // 简化：任何 pointerup/cancel 都尝试清理
+      const pts = this._activePointers();
+      if (pts.length < 2) pinchDist = 0;
+      if (pts.length === 0) { pinchDist = 0; panStart = null; }
+      if (e.isPrimary) panStart = null;
+    };
+    this.boardArea.addEventListener("pointerup", endGesture);
+    this.boardArea.addEventListener("pointercancel", endGesture);
+    this.boardArea.addEventListener("pointerleave", endGesture);
+
+    // 滚轮缩放（桌面端）
+    this.boardArea.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      let s = this.boardScale * delta;
+      s = clamp(s, 0.3, 3);
+      this.boardScale = s;
+      this.applyBoardTransform();
+    }, { passive: false });
+  },
+
+  _activePointers: (function() {
+    const map = new Map();
+    return function() {
+      // 借用 boardArea 的 pointer tracking
+      // 这里用 getCoalescedEvents 不可靠，改用 document-level 跟踪
+      return Array.from(map.values());
+    };
+  })(),
+};
+
+// 简单的双指跟踪（覆盖上面的占位）
+(function() {
+  const ptrs = new Map();
+  document.addEventListener("pointerdown", e => ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }));
+  document.addEventListener("pointermove", e => {
+    if (ptrs.has(e.pointerId)) ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  });
+  document.addEventListener("pointerup", e => ptrs.delete(e.pointerId));
+  document.addEventListener("pointercancel", e => ptrs.delete(e.pointerId));
+  Game._activePointers = () => Array.from(ptrs.values());
+})();
+
+// 启动
+document.addEventListener("DOMContentLoaded", () => Game.init());
+</script>
+</body>
+</html>
