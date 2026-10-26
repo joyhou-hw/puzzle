@@ -6,7 +6,6 @@
 <meta name="theme-color" content="#0f1216">
 <title>六边形拼图 · v3</title>
 <style>
-  /* === 设计令牌（沿用 v2） === */
   :root {
     color-scheme: light;
     --bg: #f5f6f8; --surface: #ffffff; --surface-muted: #eef0f3;
@@ -34,8 +33,6 @@
     overflow: hidden; overscroll-behavior: none;
   }
   body { display: flex; flex-direction: column; }
-
-  /* === 顶栏 === */
   .topbar {
     flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
     padding: 10px 12px; background: var(--surface);
@@ -43,7 +40,6 @@
     padding-top: max(10px, env(safe-area-inset-top));
     flex-wrap: wrap;
   }
-  /* === Tab 导航（新增） === */
   .tabs {
     flex: 0 0 auto; display: flex; gap: 2px;
     background: var(--surface-muted); border-radius: var(--radius);
@@ -63,14 +59,14 @@
     font-weight: 600; box-shadow: var(--shadow);
   }
   .tabs a .tab-icon { font-size: 13px; line-height: 1; }
-
-  /* === 游戏视图顶栏控件 === */
   .topbar-game-controls {
     flex: 1 1 auto; display: flex; align-items: center; gap: 8px;
     min-width: 0; justify-content: flex-end;
   }
   body.view-gallery .topbar-game-controls,
-  body.view-progress .topbar-game-controls { display: none; }
+  body.view-progress .topbar-game-controls,
+  body.view-levels .topbar-game-controls,
+  body.view-mode .topbar-game-controls { display: none; }
   .progress-wrap { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 260px; }
   .progress-bar { flex: 1 1 auto; height: 8px; border-radius: 999px; background: var(--surface-muted); overflow: hidden; }
   .progress-fill { height: 100%; width: 0%; background: var(--brand); border-radius: 999px; transition: width 0.3s ease; }
@@ -87,8 +83,6 @@
   .btn-primary:active { filter: brightness(0.95); }
   .btn-icon { padding: 7px 9px; }
   .btn-danger { color: var(--danger); border-color: var(--danger); }
-
-  /* === 难度切换器（新增） === */
   .difficulty-switch {
     flex: 0 0 auto; display: inline-flex;
     border: 1px solid var(--border); border-radius: var(--radius);
@@ -107,15 +101,11 @@
   .difficulty-switch button.active[data-diff="nightmare"] {
     background: var(--danger); color: #fff;
   }
-
-  /* === 视图切换（新增） === */
   .view {
     flex: 1 1 auto; display: none; flex-direction: column;
     overflow: hidden; min-height: 0;
   }
   .view.active { display: flex; }
-
-  /* === 拼图板区（沿用 v2） === */
   .board-area {
     flex: 1 1 auto; position: relative; overflow: hidden;
     background:
@@ -142,8 +132,6 @@
   .board-area.no-preview .board-bg-svg { display: block; opacity: 0.55; filter: none; }
   .board-area.no-preview.show-preview .board-bg-svg { opacity: 0.92; }
   .board-svg { position: absolute; top: 0; left: 0; pointer-events: none; }
-
-  /* === 碎片（六边形 clip-path，沿用 v2） === */
   .piece {
     position: absolute;
     background-repeat: no-repeat;
@@ -159,8 +147,6 @@
   @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-3px);} 75%{transform:translateX(3px);} }
   .piece.snap-in { animation: snap 0.25s ease; }
   @keyframes snap { 0%{transform:scale(1.08);} 100%{transform:scale(1);} }
-
-  /* === 池子（沿用 v2） === */
   .pool {
     flex: 0 0 auto; background: var(--surface);
     border-top: 1px solid var(--border);
@@ -185,8 +171,6 @@
   }
   .pool-piece:active { cursor: grabbing; transform: scale(1.06); }
   .pool-empty { color: var(--text-muted); font-size: 12px; padding: 20px; text-align: center; flex: 1; }
-
-  /* === 弹窗（沿用 v2） === */
   .modal-mask {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6);
     display: flex; align-items: center; justify-content: center;
@@ -201,7 +185,6 @@
   .modal .stat-num { font-size: 22px; font-weight: 600; color: var(--brand); }
   .modal .stat-label { color: var(--text-muted); }
   .modal-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-
   .toast {
     position: fixed; bottom: 120px; left: 50%;
     transform: translateX(-50%) translateY(20px);
@@ -212,7 +195,6 @@
     max-width: 80vw; text-align: center;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
   .reveal {
     position: fixed; inset: 0; z-index: 1800;
     background: rgba(0,0,0,0.92);
@@ -223,8 +205,6 @@
   .reveal img { max-width: 90vw; max-height: 70vh; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
   .reveal h2 { color: #fff; margin: 16px 0 4px; font-size: 20px; }
   .reveal p { color: rgba(255,255,255,0.6); margin: 0 0 20px; font-size: 13px; }
-
-  /* 加载浮层 */
   .loading {
     position: fixed; inset: 0; z-index: 3000;
     background: rgba(0,0,0,0.5);
@@ -232,15 +212,12 @@
     color: #fff; font-size: 14px;
   }
   .loading.show { display: flex; }
-
   input[type=file] {
     position: absolute;
     left: -9999px; top: -9999px;
     width: 1px; height: 1px;
     opacity: 0; pointer-events: none;
   }
-
-  /* === 成就页（#/gallery）新增 === */
   .gallery-header {
     flex: 0 0 auto; display: flex; align-items: center;
     justify-content: space-between; gap: 12px;
@@ -280,6 +257,89 @@
     font-size: 11px; color: var(--text-muted);
     display: flex; justify-content: space-between; align-items: center; gap: 6px;
   }
+  .levels-header {
+    flex: 0 0 auto; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px;
+    padding: 16px 16px 8px;
+  }
+  .levels-header h2 { margin: 0; font-size: 18px; font-weight: 600; }
+  .levels-progress { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .levels-progress span { color: var(--brand); font-weight: 600; }
+  .levels-grid {
+    flex: 1 1 auto; overflow-y: auto; overflow-x: hidden;
+    padding: 8px 16px 16px;
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 12px; align-content: start;
+  }
+  .level-card {
+    background: var(--surface); border-radius: var(--radius-card);
+    border: 1px solid var(--border); overflow: hidden;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+    display: flex; flex-direction: column;
+    position: relative;
+  }
+  .level-card:hover { box-shadow: var(--shadow); }
+  .level-card:active { transform: scale(0.98); }
+  .level-card.locked { opacity: 0.55; cursor: not-allowed; }
+  .level-thumb {
+    width: 100%; aspect-ratio: 4/3;
+    background: var(--surface-muted);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative;
+  }
+  .level-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .level-thumb .lock-icon {
+    width: 40px; height: 40px; color: var(--text-muted); opacity: 0.4;
+  }
+  .level-thumb .lock-icon svg { width: 100%; height: 100%; fill: currentColor; }
+  .level-badge-num {
+    position: absolute; top: 6px; left: 6px;
+    background: rgba(0,0,0,0.6); color: #fff;
+    border-radius: 50%; width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+  .level-card .info { padding: 8px 10px; }
+  .level-card .name { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+  .level-card .meta {
+    font-size: 11px; color: var(--text-muted);
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+  }
+  .level-clear-dots { display: flex; gap: 3px; }
+  .level-clear-dots .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--border);
+  }
+  .level-clear-dots .dot.cleared { background: var(--brand); }
+  .mode-header {
+    flex: 0 0 auto; padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mode-header h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+  .mode-header .sub { margin: 0; font-size: 12px; color: var(--text-muted); }
+  .mode-grid {
+    flex: 1 1 auto; overflow-y: auto;
+    padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .mode-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-card); padding: 16px;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+  }
+  .mode-card:hover { box-shadow: var(--shadow); }
+  .mode-card:active { transform: scale(0.98); }
+  .mode-card.cleared { border-color: var(--brand); }
+  .mode-card-info { flex: 1 1 auto; }
+  .mode-card-name {
+    font-size: 16px; font-weight: 600; margin: 0 0 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .mode-card-desc { font-size: 12px; color: var(--text-muted); margin: 0; }
+  .mode-card-check { font-size: 20px; color: var(--brand); flex: 0 0 auto; }
+  .mode-card-stats { font-size: 11px; color: var(--text-muted); flex: 0 0 auto; text-align: right; }
   .diff-badge {
     padding: 2px 6px; border-radius: 4px; font-size: 10px;
     font-weight: 600; flex: 0 0 auto;
@@ -292,8 +352,6 @@
     .diff-badge.hard { background: #663300; color: #fff3e5; }
     .diff-badge.nightmare { background: #660000; color: #ffe5e5; }
   }
-
-  /* === 存档页（#/progress）新增 === */
   .progress-header {
     flex: 0 0 auto; padding: 16px;
     border-bottom: 1px solid var(--border);
@@ -331,8 +389,6 @@
     color: var(--text-muted); text-align: center; padding: 40px 20px;
     font-size: 13px;
   }
-
-  /* === 响应式 === */
   @media (max-width: 600px) {
     .tabs a { padding: 6px 8px; font-size: 11px; }
     .tabs a .tab-text { display: none; }
@@ -352,11 +408,11 @@
   }
 </style>
 </head>
-<body class="view-game">
+<body class="view-levels">
   <header class="topbar">
     <nav class="tabs" id="tabs">
-      <a href="#/game" data-tab="game"><span class="tab-icon">🎮</span><span class="tab-text">游戏</span></a>
-      <a href="#/gallery" data-tab="gallery"><span class="tab-icon">🏆</span><span class="tab-text">成就</span></a>
+      <a href="#/levels" data-tab="levels"><span class="tab-icon">🎮</span><span class="tab-text">关卡</span></a>
+      <a href="#/gallery" data-tab="gallery"><span class="tab-icon">🏆</span><span class="tab-text">图库</span></a>
       <a href="#/progress" data-tab="progress"><span class="tab-icon">💾</span><span class="tab-text">存档</span></a>
     </nav>
     <div class="topbar-game-controls">
@@ -364,19 +420,28 @@
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
         <span class="progress-text" id="progressText">0 / 0</span>
       </div>
-      <div class="difficulty-switch" id="diffSwitch">
-        <button data-diff="easy">简单</button>
-        <button data-diff="hard">困难</button>
-        <button data-diff="nightmare">噩梦</button>
-      </div>
       <label class="btn btn-icon" id="uploadBtn" for="fileInput" title="从相册选图">选图</label>
       <button class="btn btn-icon" id="hintBtn" title="按住查看原图">原图</button>
       <button class="btn btn-icon" id="refreshBtn" title="重置当前关">刷新</button>
+      <button class="btn btn-icon" id="backToLevelsBtn" title="返回关卡列表">关卡</button>
       <input type="file" id="fileInput" accept="image/*">
     </div>
   </header>
-
-  <main class="view view-game active" id="viewGame">
+  <main class="view view-levels" id="viewLevels">
+    <div class="levels-header">
+      <h2>选择关卡</h2>
+      <div class="levels-progress">已通关 <span id="levelsClearedCount">0</span> / 6 关</div>
+    </div>
+    <div class="levels-grid" id="levelsGrid"></div>
+  </main>
+  <main class="view view-mode" id="viewMode">
+    <div class="mode-header">
+      <h2 id="modeLevelName">选择模式</h2>
+      <p class="sub" id="modeSubText"></p>
+    </div>
+    <div class="mode-grid" id="modeGrid"></div>
+  </main>
+  <main class="view view-game" id="viewGame">
     <div class="board-area" id="boardArea">
       <div class="board" id="board">
         <div class="board-inner" id="boardInner">
@@ -394,15 +459,13 @@
       <div class="pool-track" id="poolTrack"></div>
     </footer>
   </main>
-
   <main class="view view-gallery" id="viewGallery">
     <div class="gallery-header">
-      <h2>成就图库</h2>
-      <div class="gallery-progress">已通关 <span id="galleryCount">0</span> / 9 关</div>
+      <h2>图库</h2>
+      <div class="gallery-progress">已解锁 <span id="galleryCount">0</span> / 6 关</div>
     </div>
     <div class="gallery-grid" id="galleryGrid"></div>
   </main>
-
   <main class="view view-progress" id="viewProgress">
     <div class="progress-header">
       <div>
@@ -417,11 +480,10 @@
     </div>
     <div class="save-list" id="saveList"></div>
   </main>
-
   <div class="modal-mask" id="winModal">
     <div class="modal">
       <h2>通关！</h2>
-      <p id="winSubText">已收藏到图库</p>
+      <p id="winSubText">已通关</p>
       <div class="stats">
         <div><div class="stat-num" id="statTime">0:00</div><div class="stat-label">用时</div></div>
         <div><div class="stat-num" id="statMoves">0</div><div class="stat-label">步数</div></div>
@@ -429,23 +491,20 @@
       <div class="modal-actions">
         <button class="btn btn-primary" id="nextLevelBtn">下一关</button>
         <button class="btn" id="replayBtn">再看一次</button>
+        <button class="btn" id="backLevelsBtn">返回关卡</button>
       </div>
     </div>
   </div>
-
   <div class="reveal" id="reveal">
     <img id="revealImg" alt="完整图">
     <h2 id="revealTitle">完成</h2>
     <p id="revealSubText">已收藏到图库</p>
     <button class="btn btn-primary" id="revealCloseBtn">继续</button>
   </div>
-
   <div class="toast" id="toast"></div>
   <div class="loading" id="loading">处理图片中…</div>
-
 <script>
 "use strict";
-
 /* ============================================================
  * 六边形拼图 · v3
  * 基于 v2 全部已验证逻辑，新增：
@@ -459,7 +518,6 @@
  *            双指缩放/单指平移/滚轮、文件上传、localStorage、
  *            generateDefaultImage、CSS 设计令牌。
  * ============================================================ */
-
 const $ = (id) => document.getElementById(id);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const rand = (n) => Math.floor(Math.random() * n);
@@ -477,8 +535,6 @@ function fmtTime(s) {
   const m = Math.floor(s / 60), ss = s % 60;
   return `${m}:${ss.toString().padStart(2, "0")}`;
 }
-
-// ---------- 程序化生成默认图（沿用 v2，可被上传图覆盖） ----------
 function generateDefaultImage(seed) {
   const W = 720, H = 540;
   const cv = document.createElement("canvas");
@@ -505,87 +561,71 @@ function generateDefaultImage(seed) {
   ctx.globalAlpha = 1;
   return cv;
 }
-
-// ---------- 难度与关卡定义（v3 新增） ----------
-// 每档 3 关，共 9 关；关卡 ID = `${diff}_${n}`
-// 关卡图片：9 关复用 6 张图（nightmare 复用 easy/hard 的图，靠难度差异区分）
-// targetPieces：方案 A 自适应网格的目标块数，cols/rows 会在 loadLevel 时按图片比例重算
 const DIFFICULTIES = {
-  easy:      { hexW: 92, groupSize: 12, preview: true,  label: "简单",   targetPieces: 35 },  // 约 35 块
-  hard:      { hexW: 64, groupSize: 17, preview: true,  label: "困难",   targetPieces: 75 },  // 约 75 块
-  nightmare: { hexW: 64, groupSize: 17, preview: false, label: "噩梦",   targetPieces: 75 },  // 同困难块数，无淡原图
+  easy:      { hexW: 92, groupSize: 12, preview: true,  label: "简单",   targetPieces: 35 },
+  hard:      { hexW: 64, groupSize: 17, preview: true,  label: "困难",   targetPieces: 75 },
+  nightmare: { hexW: 64, groupSize: 17, preview: false, label: "噩梦",   targetPieces: 75 },
 };
-const LEVEL_NAMES = ["晨光", "暮色", "星河"];
-// 每关对应的图片（images/ 目录下）；9 关映射到 6 张图，噩梦难度复用前 3 张
-const LEVEL_IMAGES = {
-  easy_1: "images/level-1.jpg", easy_2: "images/level-2.jpg", easy_3: "images/level-3.jpg",
-  hard_1: "images/level-4.jpg",  hard_2: "images/level-5.jpg", hard_3: "images/level-6.jpg",
-  nightmare_1: "images/level-1.jpg", nightmare_2: "images/level-2.jpg", nightmare_3: "images/level-3.jpg",
-};
-const LEVELS = [];
-["easy", "hard", "nightmare"].forEach(diff => {
-  const cfg = DIFFICULTIES[diff];
-  for (let i = 0; i < 3; i++) {
-    const id = `${diff}_${i + 1}`;
-    LEVELS.push({
-      id,
-      name: LEVEL_NAMES[i],
-      difficulty: diff,
-      // cols/rows 不再硬编码，loadLevel 时按图片比例自适应计算
-      cols: 0, rows: 0,  // 占位，loadLevel 会覆盖
-      hexW: cfg.hexW,
-      groupSize: cfg.groupSize,
-      preview: cfg.preview,
-      targetPieces: cfg.targetPieces,
-      seed: i,
-      image: LEVEL_IMAGES[id],  // 关卡图片路径（v3 新增，优先于程序生成）
-    });
-  }
-});
+const MODES = ["easy", "hard", "nightmare"];
+const LEVELS = [
+  { id: 1, name: "图一", image: "images/level-1.jpg", seed: 0 },
+  { id: 2, name: "图二", image: "images/level-2.jpg", seed: 1 },
+  { id: 3, name: "图三", image: "images/level-3.jpg", seed: 2 },
+  { id: 4, name: "图四", image: "images/level-4.jpg", seed: 3 },
+  { id: 5, name: "图五", image: "images/level-5.jpg", seed: 4 },
+  { id: 6, name: "图六", image: "images/level-6.jpg", seed: 5 },
+];
 const findLevelById = (id) => LEVELS.find(l => l.id === id);
-const findLevelsByDiff = (diff) => LEVELS.filter(l => l.difficulty === diff);
-// totalOf：优先用实际 cols/rows（loadLevel 后），否则用 targetPieces 估算
-const totalOf = (lv) => (lv.cols && lv.rows) ? lv.cols * lv.rows : lv.targetPieces;
-
-// ---------- 六边形几何（沿用 v2，平顶 odd-q offset） ----------
+const UNLOCK_KEY = "puzzle_unlock_v4";
+const CLEARS_KEY = "puzzle_clears_v4";
+function getUnlocked() {
+  try { return JSON.parse(localStorage.getItem(UNLOCK_KEY) || "[1]"); } catch(e) { return [1]; }
+}
+function isUnlocked(levelId) { return getUnlocked().includes(levelId); }
+function unlockNext(levelId) {
+  const u = getUnlocked();
+  const next = levelId + 1;
+  if (LEVELS.find(l => l.id === next) && !u.includes(next)) {
+    u.push(next);
+    localStorage.setItem(UNLOCK_KEY, JSON.stringify(u));
+  }
+}
+function getClearedModes(levelId) {
+  try {
+    const all = JSON.parse(localStorage.getItem(CLEARS_KEY) || "{}");
+    return all[levelId] || {};
+  } catch(e) { return {}; }
+}
+function getClearedCount(levelId) { return Object.keys(getClearedModes(levelId)).length; }
+function isModeCleared(levelId, mode) { return !!getClearedModes(levelId)[mode]; }
+function totalOf(lv) {
+  const cfg = DIFFICULTIES[lv._mode || "easy"];
+  return cfg.targetPieces;
+}
 const Hex = {
-  // 给定六边形宽 hexW，返回高、间距等
   metrics(hexW) {
     const hexH = hexW * SQRT3 / 2;       // 六边形高（边到边）
     const hSpacing = hexW * 3 / 4;       // 同行中心水平距
     const vSpacing = hexH;               // 同列中心垂直距
     return { hexW, hexH, hSpacing, vSpacing };
   },
-  // (col,row) 中心坐标
   center(col, row, m) {
     return {
       x: col * m.hSpacing + m.hexW / 2,
       y: row * m.vSpacing + m.hexH / 2 + (col % 2 === 1 ? m.hexH / 2 : 0),
     };
   },
-  // 网格总尺寸
   totalSize(cols, rows, m) {
     const w = (cols - 1) * m.hSpacing + m.hexW;
     const h = rows * m.vSpacing + (cols > 1 ? m.hexH / 2 : 0);
     return { w, h };
   },
 };
-
-// ---------- 根据图片宽高比自适应计算六边形网格 cols/rows（方案 A） ----------
-// 目标：让网格总尺寸的宽高比 ≈ 图片宽高比，使 buildImageCanvas 的 cover 裁剪量最小
-// 六边形平顶 odd-q offset 网格总尺寸：w = (cols-1)*0.75*hexW + hexW, h = rows*0.866*hexW + 0.433*hexW
-// 近似宽高比 ≈ (0.75*cols + 0.25) / (0.866*rows + 0.433)
-// 让该比例 ≈ imgW/imgH，在目标总块数附近找最优 cols×rows
 function computeGridFromImage(imgW, imgH, targetPieces) {
   const imgRatio = imgW / imgH;  // 图片宽/高
-  // 六边形网格比例修正系数：网格宽/高 ≈ (0.75*cols)/(0.866*rows)
-  // 要让 网格比 = 图片比 => cols/rows ≈ imgRatio * (0.866/0.75) = imgRatio * 1.1547
   const targetColsOverRows = imgRatio * (0.866 / 0.75);
-  // 在目标块数附近搜索：cols*rows ≈ targetPieces，cols/rows ≈ targetColsOverRows
-  // 理想 cols = sqrt(targetPieces * targetColsOverRows), rows = sqrt(targetPieces / targetColsOverRows)
   const idealCols = Math.sqrt(targetPieces * targetColsOverRows);
   const idealRows = Math.sqrt(targetPieces / targetColsOverRows);
-  // 在理想值附近 ±2 范围搜索，找实际块数最接近目标且比例最接近的
   let best = null;
   const c0 = Math.max(3, Math.round(idealCols) - 2);
   const c1 = Math.round(idealCols) + 2;
@@ -594,7 +634,6 @@ function computeGridFromImage(imgW, imgH, targetPieces) {
   for (let c = c0; c <= c1; c++) {
     for (let r = r0; r <= r1; r++) {
       const pieces = c * r;
-      // 评分：块数偏差（权重 1）+ 比例偏差（权重 2，比例更重要）
       const pieceDiff = Math.abs(pieces - targetPieces) / targetPieces;
       const gridRatio = (0.75 * c) / (0.866 * r);
       const ratioDiff = Math.abs(gridRatio - imgRatio) / imgRatio;
@@ -606,8 +645,6 @@ function computeGridFromImage(imgW, imgH, targetPieces) {
   }
   return best || { cols: Math.round(idealCols), rows: Math.round(idealRows), pieces: targetPieces };
 }
-
-// ---------- 游戏核心（沿用 v2 + 难度/preview 扩展） ----------
 const Game = {
   level: null, levelIdx: 0, currentDifficulty: "easy",
   imgCanvas: null, imgDataURL: "",
@@ -619,7 +656,6 @@ const Game = {
   boardScale: 1, boardOffsetX: 0, boardOffsetY: 0,
   boardArea: null, board: null, boardInner: null, boardBgImg: null, boardBgSvg: null, boardSvg: null, poolTrack: null,
   userImage: null, // 用户上传的 Image 对象（持久于本次会话）
-
   init() {
     this.boardArea = $("boardArea");
     this.board = $("board");
@@ -628,17 +664,12 @@ const Game = {
     this.boardBgSvg = $("boardBgSvg");
     this.boardSvg = $("boardSvg");
     this.poolTrack = $("poolTrack");
-
     $("refreshBtn").addEventListener("click", () => this.refreshGroup());
     $("poolRefreshBtn").addEventListener("click", () => this.refreshGroup());
     $("nextLevelBtn").addEventListener("click", () => this.nextLevel());
     $("replayBtn").addEventListener("click", () => { $("winModal").classList.remove("show"); $("reveal").classList.add("show"); });
     $("revealCloseBtn").addEventListener("click", () => $("reveal").classList.remove("show"));
-
-    // 选图：label[for=fileInput] 自动触发 input，无需 JS click
     $("fileInput").addEventListener("change", (e) => this.onFileSelected(e));
-
-    // 原图提示（按住显示半透明原图；噩梦模式下原图层不显示，按了也没用）
     const hintBtn = $("hintBtn");
     const showP = () => this.boardArea.classList.add("show-preview");
     const hideP = () => this.boardArea.classList.remove("show-preview");
@@ -646,60 +677,34 @@ const Game = {
     hintBtn.addEventListener("pointerup", hideP);
     hintBtn.addEventListener("pointerleave", hideP);
     hintBtn.addEventListener("pointercancel", hideP);
-
-    // 难度切换
-    $("diffSwitch").addEventListener("click", (e) => {
-      const btn = e.target.closest("button[data-diff]");
-      if (!btn) return;
-      const diff = btn.dataset.diff;
-      if (diff === this.currentDifficulty) return;
-      this.setDifficulty(diff);
-    });
-
-    // 存档管理按钮
     $("saveProgressBtn").addEventListener("click", () => ProgressManager.saveCurrent());
     $("loadProgressBtn").addEventListener("click", () => this.loadProgress(true));
     $("clearProgressBtn").addEventListener("click", () => ProgressManager.clearCurrent());
-
+    $("backToLevelsBtn").addEventListener("click", () => Router.go("/levels"));
+    $("backLevelsBtn").addEventListener("click", () => {
+      $("winModal").classList.remove("show");
+      Router.go("/levels");
+    });
     this.bindBoardGestures();
     window.addEventListener("resize", () => this.layoutBoard());
-
-    // 启动时读 puzzle_current_v3，恢复上次玩的关
-    let startDiff = "easy", startIdx = 0;
-    try {
-      const cur = JSON.parse(localStorage.getItem("puzzle_current_v3") || "null");
-      if (cur && cur.levelId) {
-        const lv = findLevelById(cur.levelId);
-        if (lv) {
-          startDiff = lv.difficulty;
-          startIdx = findLevelsByDiff(lv.difficulty).indexOf(lv);
-          if (startIdx < 0) startIdx = 0;
-        }
-      }
-    } catch (e) {}
-
-    this.loadLevel(startDiff, startIdx, false, true);
-    this.updateDifficultyUI();
-    // loadProgress 已在 loadLevel 的 finalize 末尾自动调用（异步完成后）
-
-    // 启动路由（最后调用，确保 Game 已就绪）
+    this.currentLevelId = 1;
+    this.currentMode = "easy";
     Router.init();
   },
-
-  // ====== 难度切换（v3 新增） ======
-  setDifficulty(diff) {
-    this.currentDifficulty = diff;
-    this.loadLevel(diff, 0, !!this.userImage);
-    this.updateDifficultyUI();
-    toast(`已切换到 ${DIFFICULTIES[diff].label} 难度`);
+  selectLevel(levelId) {
+    this.pendingLevelId = levelId;
+    Router.go("/mode");
   },
-  updateDifficultyUI() {
-    document.querySelectorAll("#diffSwitch button").forEach(b => {
-      b.classList.toggle("active", b.dataset.diff === this.currentDifficulty);
-    });
+  startGame(levelId, mode) {
+    this.currentLevelId = levelId;
+    this.currentMode = mode;
+    const lv = findLevelById(levelId);
+    if (!lv) return;
+    Router.go("/game");
+    setTimeout(() => {
+      this.loadLevel(lv, mode, false, true);
+    }, 50);
   },
-
-  // ====== 文件上传（沿用 v2） ======
   onFileSelected(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -711,8 +716,7 @@ const Game = {
       img.onload = () => {
         this.userImage = img;
         $("loading").classList.remove("show");
-        // 用上传图重载当前关
-        this.loadLevel(this.currentDifficulty, this.levelIdx, true);
+        if (this.level) this.loadLevel(this.level, this.currentMode, true);
         toast("已加载本地图片，开始拼吧");
       };
       img.onerror = () => { $("loading").classList.remove("show"); toast("图片加载失败"); };
@@ -720,16 +724,12 @@ const Game = {
     };
     reader.onerror = () => { $("loading").classList.remove("show"); toast("读取失败"); };
     reader.readAsDataURL(file);
-    // 清空 input.value 允许重复选同一文件
     e.target.value = "";
   },
-
-  // 把任意图源（canvas 或 Image）缩放到网格总尺寸，返回 canvas（沿用 v2）
   buildImageCanvas(src) {
     const cv = document.createElement("canvas");
     cv.width = this.totalW; cv.height = this.totalH;
     const ctx = cv.getContext("2d");
-    // cover 缩放，保持比例填充
     const sw = src.width || src.naturalWidth, sh = src.height || src.naturalHeight;
     const scale = Math.max(this.totalW / sw, this.totalH / sh);
     const dw = sw * scale, dh = sh * scale;
@@ -737,85 +737,70 @@ const Game = {
     ctx.drawImage(src, dx, dy, dw, dh);
     return cv;
   },
-
-  // ====== 关卡加载（v2 + 难度/preview 扩展 + v3 图片资源接入 + 方案A 自适应网格） ======
-  // autoLoadProgress：loadLevel 异步完成后是否自动尝试恢复存档（init/jumpTo 用）
-  loadLevel(diff, idx, keepUserImage = false, autoLoadProgress = false) {
-    const levelsInDiff = findLevelsByDiff(diff);
-    this.currentDifficulty = diff;
-    this.levelIdx = ((idx % levelsInDiff.length) + levelsInDiff.length) % levelsInDiff.length;
-    this.level = levelsInDiff[this.levelIdx];
-
-    // hexW 来自关卡配置
-    this.hexW = this.level.hexW;
-
-    // 图片源优先级：用户上传 > 关卡图片(images/) > 程序生成
-    // 异步加载图片后：①按图片比例自适应计算 cols/rows ②算 totalW/totalH ③buildImageCanvas + 构造碎片
+  loadLevel(lv, mode, keepUserImage = false, autoLoadProgress = false) {
+    this.level = lv;
+    this.currentMode = mode;
+    this.currentDifficulty = mode;  // 兼容旧代码引用 currentDifficulty
+    this.currentLevelId = lv.id;
+    const cfg = DIFFICULTIES[mode];
+    this.hexW = cfg.hexW;
+    this.groupSize = cfg.groupSize;
+    this.preview = cfg.preview;
+    lv._mode = mode;
+    lv.hexW = cfg.hexW;
+    lv.groupSize = cfg.groupSize;
+    lv.preview = cfg.preview;
+    lv.targetPieces = cfg.targetPieces;
     const finalize = (src, srcLabel) => {
-      // 方案 A：按图片实际尺寸自适应计算 cols/rows
       const sw = src.width || src.naturalWidth || 720;
       const sh = src.height || src.naturalHeight || 540;
-      const grid = computeGridFromImage(sw, sh, this.level.targetPieces);
-      this.level.cols = grid.cols;
-      this.level.rows = grid.rows;
-      console.log(`[loadLevel] ${this.level.id} 图片 ${sw}x${sh} -> 网格 ${grid.cols}x${grid.rows}=${grid.pieces}块 (目标${this.level.targetPieces})`);
-
-      // 算 totalW/totalH（依赖 cols/rows）
+      const grid = computeGridFromImage(sw, sh, lv.targetPieces);
+      lv.cols = grid.cols;
+      lv.rows = grid.rows;
+      console.log(`[loadLevel] 关${lv.id} ${mode} 图${sw}x${sh} -> ${grid.cols}x${grid.rows}=${grid.pieces}块`);
       this.metrics = Hex.metrics(this.hexW);
-      const sz = Hex.totalSize(this.level.cols, this.level.rows, this.metrics);
+      const sz = Hex.totalSize(lv.cols, lv.rows, this.metrics);
       this.totalW = Math.round(sz.w);
       this.totalH = Math.round(sz.h);
-
       this.imgCanvas = this.buildImageCanvas(src);
       this.imgDataURL = this.imgCanvas.toDataURL("image/jpeg", 0.85);
-      this.imgSrcLabel = srcLabel;  // 记录图源类型（用于成就页显示原图）
+      this.imgSrcLabel = srcLabel;
       this.buildPieces();
       this.layoutBoard();
       this.dealNextGroup(true);
       this.updateProgress();
       ProgressManager.updateSubTitle();
       $("loading").classList.remove("show");
-      // 异步完成后自动恢复存档（init/jumpTo 场景）
       if (autoLoadProgress) this.loadProgress(false);
     };
-
     if (keepUserImage && this.userImage) {
-      // 用户上传图优先
       finalize(this.userImage, "upload");
       return;
     }
     this.userImage = null;
-
-    // 尝试加载关卡图片；失败回退程序生成
-    if (this.level.image) {
+    if (lv.image) {
       $("loading").classList.add("show");
       const img = new Image();
-      img.onload = () => finalize(img, this.level.image);
+      img.onload = () => finalize(img, lv.image);
       img.onerror = () => {
-        console.warn(`[loadLevel] 关卡图片 ${this.level.image} 加载失败，回退程序生成`);
-        finalize(generateDefaultImage(this.level.seed), "generated");
+        console.warn(`[loadLevel] 关卡图片 ${lv.image} 加载失败，回退程序生成`);
+        finalize(generateDefaultImage(lv.seed), "generated");
       };
-      img.src = this.level.image;
+      img.src = lv.image;
     } else {
-      finalize(generateDefaultImage(this.level.seed), "generated");
+      finalize(generateDefaultImage(lv.seed), "generated");
     }
   },
-
-  // 构造碎片 + 清空旧状态（从 loadLevel 抽出，供异步加载复用）
   buildPieces() {
-    // 清空旧状态
     this.pieces = {}; this.pieceList = [];
     this.currentGroup = []; this.groupIndex = 0;
     this.placedCount = 0; this.moves = 0; this.startTime = Date.now();
-
-    // 构造所有六边形碎片
     for (let r = 0; r < this.level.rows; r++) {
       for (let c = 0; c < this.level.cols; c++) {
         const ctr = Hex.center(c, r, this.metrics);
         const id = `${c}_${r}`;
         const p = {
           id, col: c, row: r,
-          // 正确位置：碎片边界框左上角 = 中心 - hexW/2, hexH/2
           correctX: Math.round(ctr.x - this.hexW / 2),
           correctY: Math.round(ctr.y - this.metrics.hexH / 2),
           centerX: ctr.x, centerY: ctr.y,
@@ -826,42 +811,24 @@ const Game = {
         this.pieceList.push(p);
       }
     }
-
-    // 清空 DOM
     this.boardInner.querySelectorAll(".piece").forEach(el => el.remove());
     this.poolTrack.innerHTML = "";
-
-    // 板子尺寸
     this.boardInner.style.width = this.totalW + "px";
     this.boardInner.style.height = this.totalH + "px";
-
-    // 半透明原图背景
     this.boardBgImg.src = this.imgDataURL;
     this.boardBgImg.style.width = this.totalW + "px";
     this.boardBgImg.style.height = this.totalH + "px";
-
-    // 噩梦模式：boardArea 加 no-preview 类（img 隐藏、svg 显示、槽位虚线更明显）
     this.boardArea.classList.toggle("no-preview", !this.level.preview);
-    // 噩梦模式：构建 SVG 原生 mask 挖空六边形网格区域，只显锯齿边缘
     if (!this.level.preview) this.buildEdgeMask();
     else this.boardBgSvg.innerHTML = "";
-
-    // SVG 槽位虚线六边形
     this.renderSlots();
-
     this.startTimer();
-
-    // 写入 puzzle_current_v3（v3 新增）
     try {
-      localStorage.setItem("puzzle_current_v3", JSON.stringify({
-        levelId: this.level.id, difficulty: this.currentDifficulty,
+      localStorage.setItem("puzzle_current_v4", JSON.stringify({
+        levelId: this.level.id, mode: this.currentMode,
       }));
     } catch (e) {}
   },
-
-  // 噩梦模式：构建 SVG 原生 mask 挖空六边形网格区域，只显锯齿边缘。
-  // 不依赖 CSS mask（iOS Safari 对 data URL 形式的 CSS mask 兼容性差），
-  // 改用 SVG <defs><mask> + <image mask="url(#...)">，所有浏览器都支持。
   buildEdgeMask() {
     const m = this.metrics;
     const SVGNS = "http://www.w3.org/2000/svg";
@@ -870,7 +837,6 @@ const Game = {
     svg.setAttribute("height", this.totalH);
     svg.setAttribute("viewBox", `0 0 ${this.totalW} ${this.totalH}`);
     svg.innerHTML = "";
-    // defs/mask：白色 rect（显示）+ 每个六边形位置黑色 polygon（挖空）
     const defs = document.createElementNS(SVGNS, "defs");
     const mask = document.createElementNS(SVGNS, "mask");
     mask.setAttribute("id", "edgeMask");
@@ -882,7 +848,6 @@ const Game = {
     whiteRect.setAttribute("height", this.totalH);
     whiteRect.setAttribute("fill", "white");
     mask.appendChild(whiteRect);
-    // 平顶六边形 6 顶点（相对中心，半径 hexW/2）—— 与 renderSlots 的 pts() 一致
     const pts = (cx, cy) => {
       const angles = [0, 60, 120, 180, 240, 300].map(a => a * Math.PI / 180);
       return angles.map(a => {
@@ -899,7 +864,6 @@ const Game = {
     }
     defs.appendChild(mask);
     svg.appendChild(defs);
-    // image 应用 mask：白色=显示（锯齿边缘），黑色=隐藏（网格内部）
     const image = document.createElementNS(SVGNS, "image");
     image.setAttribute("href", this.imgDataURL);
     image.setAttribute("xlink:href", this.imgDataURL); // 兼容旧版 Safari
@@ -911,8 +875,6 @@ const Game = {
     image.setAttribute("mask", "url(#edgeMask)");
     svg.appendChild(image);
   },
-
-  // 渲染 SVG 虚线槽位（沿用 v2，按 preview 调整 stroke）
   renderSlots() {
     const svg = this.boardSvg;
     svg.setAttribute("width", this.totalW);
@@ -921,7 +883,6 @@ const Game = {
     svg.innerHTML = "";
     const m = this.metrics;
     const pts = (cx, cy) => {
-      // 平顶六边形 6 顶点（相对中心）
       const angles = [0, 60, 120, 180, 240, 300].map(a => a * Math.PI / 180);
       return angles.map(a => {
         const px = cx + (m.hexW / 2) * Math.cos(a);
@@ -929,7 +890,6 @@ const Game = {
         return `${px.toFixed(1)},${py.toFixed(1)}`;
       }).join(" ");
     };
-    // 噩梦模式：虚线更明显（rgba 0.5）；其他模式：0.35（v2 默认）
     const strokeColor = this.level.preview ? "rgba(127,127,127,0.35)" : "rgba(127,127,127,0.5)";
     for (const p of this.pieceList) {
       const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
@@ -942,7 +902,6 @@ const Game = {
       svg.appendChild(poly);
     }
   },
-
   layoutBoard() {
     const aw = this.boardArea.clientWidth, ah = this.boardArea.clientHeight;
     if (!aw || !ah) return; // 视图未显示时不布局
@@ -956,14 +915,10 @@ const Game = {
   applyBoardTransform() {
     this.board.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.boardScale})`;
   },
-
-  // 进入游戏视图时重新布局（尺寸可能变化）
   onEnterGame() {
     this.layoutBoard();
     ProgressManager.updateSubTitle();
   },
-
-  // ====== 发牌（沿用 v2） ======
   dealNextGroup(isFirst = false) {
     const remaining = this.pieceList.filter(p => p.status === "pooled");
     if (remaining.length === 0) { this.checkWin(); return; }
@@ -974,7 +929,6 @@ const Game = {
     $("poolTitle").textContent = `碎片池 · 第 ${this.groupIndex} 组（${n} 块）`;
     if (!isFirst) toast(`第 ${this.groupIndex} 组已发牌`);
   },
-
   refreshGroup() {
     this.pieceList.forEach(p => {
       if (p.status === "placed_wrong") {
@@ -986,8 +940,6 @@ const Game = {
     this.dealNextGroup();
     this.saveProgress();
   },
-
-  // ====== 渲染池子（六边形小碎片，沿用 v2） ======
   renderPool() {
     this.poolTrack.innerHTML = "";
     if (this.currentGroup.length === 0) {
@@ -1002,7 +954,6 @@ const Game = {
       el.style.width = size + "px";
       el.style.height = (size * SQRT3 / 2) + "px";
       el.style.backgroundImage = `url(${this.imgDataURL})`;
-      // 池中按比例缩放原图
       const sx = size / this.hexW;
       el.style.backgroundSize = `${this.totalW * sx}px ${this.totalH * sx}px`;
       el.style.backgroundPosition = `-${(p.centerX - this.hexW / 2) * sx}px -${(p.centerY - this.metrics.hexH / 2) * sx}px`;
@@ -1012,8 +963,6 @@ const Game = {
       this.poolTrack.appendChild(el);
     }
   },
-
-  // ====== 拖拽引擎（沿用 v2，Pointer Events + setPointerCapture + ghostEl） ======
   bindDrag(el, piece, source) {
     let dragging = false, startX = 0, startY = 0, originRect = null, ghostEl = null, pointerId = null;
     el.addEventListener("pointerdown", (e) => {
@@ -1024,7 +973,6 @@ const Game = {
       dragging = true;
       startX = e.clientX; startY = e.clientY;
       originRect = el.getBoundingClientRect();
-
       ghostEl = el.cloneNode(true);
       ghostEl.className = "piece dragging";
       ghostEl.style.width = this.hexW + "px";
@@ -1057,8 +1005,6 @@ const Game = {
     el.addEventListener("pointerup", endDrag);
     el.addEventListener("pointercancel", endDrag);
   },
-
-  // 处理松手判定（六边形最近中心 + 容差 hexW*0.55，沿用 v2）
   handleDrop(piece, clientX, clientY, source, originEl) {
     this.moves++;
     const boardRect = this.boardInner.getBoundingClientRect();
@@ -1075,14 +1021,11 @@ const Game = {
     }
     const lx = (clientX - boardRect.left) / this.boardScale;
     const ly = (clientY - boardRect.top) / this.boardScale;
-
-    // 找最近六边形中心
     let nearest = null, minD = Infinity;
     for (const p of this.pieceList) {
       const d = Math.hypot(lx - p.centerX, ly - p.centerY);
       if (d < minD) { minD = d; nearest = p; }
     }
-    // 容差：碎片中心距正确中心 < 半径即吸附
     const tol = this.hexW * 0.55;
     if (nearest && nearest.id === piece.id && minD <= tol) {
       this.lockPiece(piece, source, originEl);
@@ -1090,8 +1033,6 @@ const Game = {
       this.placeWrong(piece, lx, ly, source, originEl);
     }
   },
-
-  // 锁定（沿用 v2）
   lockPiece(piece, source, originEl) {
     if (originEl && originEl.parentNode) originEl.remove();
     if (piece.el && piece.el !== originEl) piece.el.remove();
@@ -1101,7 +1042,6 @@ const Game = {
     this.boardInner.appendChild(el);
     piece.el = el; piece.status = "placed_correct";
     this.placedCount++;
-    // 对应槽位虚线变淡
     const slot = this.boardSvg.querySelector(`[data-slot-id="${piece.id}"]`);
     if (slot) slot.setAttribute("stroke", "rgba(127,127,127,0.08)");
     const i = this.currentGroup.indexOf(piece);
@@ -1112,8 +1052,6 @@ const Game = {
     this.checkAutoDeal();
     this.checkWin();
   },
-
-  // 放错（沿用 v2）
   placeWrong(piece, lx, ly, source, originEl) {
     if (originEl && originEl.parentNode) originEl.remove();
     if (piece.el && piece.el !== originEl) piece.el.remove();
@@ -1131,8 +1069,6 @@ const Game = {
     }
     this.saveProgress();
   },
-
-  // 构造六边形碎片元素（沿用 v2）
   makePieceEl(piece, cls) {
     const el = document.createElement("div");
     el.className = "piece " + cls;
@@ -1143,7 +1079,6 @@ const Game = {
     el.style.backgroundPosition = `-${piece.correctX}px -${piece.correctY}px`;
     return el;
   },
-
   checkAutoDeal() {
     if (this.currentGroup.length === 0) {
       const rem = this.pieceList.filter(p => p.status === "pooled");
@@ -1155,7 +1090,6 @@ const Game = {
     const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
     $("statTime").textContent = fmtTime(elapsed);
     $("statMoves").textContent = this.moves;
-    // 通关 reveal 优先显示原图路径（线上图片），非图片源用 dataURL
     const fullSrc = (this.imgSrcLabel === "upload" || this.imgSrcLabel === "generated") ? this.imgDataURL : this.level.image;
     if (fullSrc && fullSrc.startsWith("images/")) {
       const img = new Image();
@@ -1166,39 +1100,42 @@ const Game = {
       $("revealImg").src = this.imgDataURL;
     }
     $("revealTitle").textContent = this.level.name;
-    $("revealSubText").textContent = `${DIFFICULTIES[this.currentDifficulty].label} · ${this.level.name} · 用时 ${fmtTime(elapsed)} · ${this.moves} 步`;
-    $("winSubText").textContent = `${DIFFICULTIES[this.currentDifficulty].label} · 已收藏到图库`;
+    $("revealSubText").textContent = `${DIFFICULTIES[this.currentMode].label} · ${this.level.name} · 用时 ${fmtTime(elapsed)} · ${this.moves} 步`;
+    const wasFirstClear = getClearedCount(this.level.id) === 0;
     this.saveToGallery();
-    localStorage.removeItem(`puzzle_progress_${this.level.id}`);
+    localStorage.removeItem(`puzzle_progress_v4_${this.level.id}_${this.currentMode}`);
     ProgressManager.updateSubTitle();
+    if (wasFirstClear) {
+      const next = findLevelById(this.level.id + 1);
+      $("winSubText").textContent = next ? `${DIFFICULTIES[this.currentMode].label}通关 · 已解锁下一关` : `${DIFFICULTIES[this.currentMode].label}通关 · 全部关卡已解锁`;
+    } else {
+      $("winSubText").textContent = `${DIFFICULTIES[this.currentMode].label} · 通关`;
+    }
+    const nextLv = findLevelById(this.level.id + 1);
+    $("nextLevelBtn").style.display = (nextLv && isUnlocked(nextLv.id)) ? "" : "none";
     setTimeout(() => {
       $("reveal").classList.add("show");
       setTimeout(() => $("winModal").classList.add("show"), 400);
     }, 500);
   },
-  // 下一关：同难度循环（v3 修改）
   nextLevel() {
     $("winModal").classList.remove("show");
     $("reveal").classList.remove("show");
-    const levelsInDiff = findLevelsByDiff(this.currentDifficulty);
-    const nextIdx = (this.levelIdx + 1) % levelsInDiff.length;
-    this.loadLevel(this.currentDifficulty, nextIdx, !!this.userImage);
+    const nextLv = findLevelById(this.level.id + 1);
+    if (nextLv) this.selectLevel(nextLv.id);
+    else Router.go("/levels");
   },
-
   updateProgress() {
     const t = this.pieceList.length;
     $("progressFill").style.width = (t ? this.placedCount / t * 100 : 0) + "%";
     $("progressText").textContent = `${this.placedCount} / ${t}`;
   },
   startTimer() { clearInterval(this._timer); this._timer = setInterval(() => {}, 1000); },
-
-  // ====== localStorage（v2 + difficulty 字段，键名沿用 puzzle_progress_${levelId}） ======
-  // 方案 A：快照增加 cols/rows/imageW/imageH，加载时校验网格是否匹配，不匹配则丢弃（图片变了）
   saveProgress() {
     if (this.placedCount === this.pieceList.length) return;
     const snap = {
-      levelId: this.level.id, difficulty: this.currentDifficulty,
-      cols: this.level.cols, rows: this.level.rows,  // 网格尺寸（方案 A 存档兼容）
+      levelId: this.level.id, mode: this.currentMode,
+      cols: this.level.cols, rows: this.level.rows,
       imageW: this.imgCanvas ? this.imgCanvas.width : 0, imageH: this.imgCanvas ? this.imgCanvas.height : 0,
       placedCorrect: [], placedWrong: [],
       groupIndex: this.groupIndex, moves: this.moves,
@@ -1209,55 +1146,34 @@ const Game = {
       else if (p.status === "placed_wrong") snap.placedWrong.push({ id: p.id, x: p.wrongX, y: p.wrongY });
     });
     try {
-      localStorage.setItem(`puzzle_progress_${this.level.id}`, JSON.stringify(snap));
-      localStorage.setItem("puzzle_current_v3", JSON.stringify({
-        levelId: this.level.id, difficulty: this.currentDifficulty,
-      }));
+      localStorage.setItem(`puzzle_progress_v4_${this.level.id}_${this.currentMode}`, JSON.stringify(snap));
     } catch(e) {}
   },
-  // 图库：puzzle_gallery_v3（v3 替代 v2 的 puzzle_gallery，每关一条记录）
   saveToGallery() {
     try {
-      let g = JSON.parse(localStorage.getItem("puzzle_gallery_v3") || "[]");
-      // 缩略图：240x180，质量 0.75，便于在 reveal 中放大显示
-      const tc = document.createElement("canvas");
-      tc.width = 240; tc.height = 180;
-      tc.getContext("2d").drawImage(this.imgCanvas, 0, 0, 240, 180);
+      const all = JSON.parse(localStorage.getItem(CLEARS_KEY) || "{}");
       const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-      const record = {
-        levelId: this.level.id, name: this.level.name,
-        difficulty: this.currentDifficulty,
-        thumbnail: tc.toDataURL("image/jpeg", 0.75),
-        // 原图来源：关卡图片路径（线上可重新加载原图），上传/程序生成则用 dataURL
-        fullImage: (this.imgSrcLabel === "upload" || this.imgSrcLabel === "generated") ? this.imgDataURL : this.level.image,
-        imageType: this.imgSrcLabel,  // upload/generated/images/level-x.jpg
+      if (!all[this.level.id]) all[this.level.id] = {};
+      all[this.level.id][this.currentMode] = {
         elapsed, moves: this.moves, completedAt: Date.now(),
       };
-      // 同关覆盖（保留最新通关记录）
-      g = g.filter(x => x.levelId !== this.level.id);
-      g.push(record);
-      localStorage.setItem("puzzle_gallery_v3", JSON.stringify(g));
+      localStorage.setItem(CLEARS_KEY, JSON.stringify(all));
+      unlockNext(this.level.id);
     } catch(e) {}
   },
-
-  // ====== 加载存档（v3 新增，沿用 v2 saveProgress 的快照结构） ======
-  // manual=true 时弹 toast；false 时静默（启动恢复用）
-  // 方案 A：校验快照的 cols/rows/imageW/imageH 与当前关卡是否匹配，不匹配则丢弃旧存档
   loadProgress(manual = false) {
     let snap = null;
-    try { snap = JSON.parse(localStorage.getItem(`puzzle_progress_${this.level.id}`) || "null"); } catch(e) {}
+    try { snap = JSON.parse(localStorage.getItem(`puzzle_progress_v4_${this.level.id}_${this.currentMode}`) || "null"); } catch(e) {}
     if (!snap) {
       if (manual) toast("当前关没有存档");
       return false;
     }
-    // 方案 A 存档校验：网格尺寸或图片尺寸不匹配，说明图片变了，旧存档作废
     if (snap.cols && snap.rows && (snap.cols !== this.level.cols || snap.rows !== this.level.rows)) {
       console.warn(`[loadProgress] 存档网格 ${snap.cols}x${snap.rows} 与当前 ${this.level.cols}x${this.level.rows} 不匹配，丢弃旧存档`);
-      localStorage.removeItem(`puzzle_progress_${this.level.id}`);
-      if (manual) toast("图片已更新，旧存档已清除");
+      localStorage.removeItem(`puzzle_progress_v4_${this.level.id}_${this.currentMode}`);
+      if (manual) toast("配置已更新，旧存档已清除");
       return false;
     }
-    // 重置当前关状态后再应用快照
     this.pieceList.forEach(p => {
       if (p.el) { p.el.remove(); p.el = null; }
       p.status = "pooled"; p.wrongX = 0; p.wrongY = 0;
@@ -1266,10 +1182,7 @@ const Game = {
     this.placedCount = 0;
     this.moves = snap.moves || 0;
     this.startTime = snap.startTime || Date.now();
-    // dealNextGroup 会自增 groupIndex，所以这里先 -1，让其落到 snap.groupIndex
     this.groupIndex = Math.max(0, (snap.groupIndex || 1) - 1);
-
-    // 锁定 placedCorrect
     for (const id of snap.placedCorrect) {
       const p = this.pieces[id];
       if (!p) continue;
@@ -1282,7 +1195,6 @@ const Game = {
       const slot = this.boardSvg.querySelector(`[data-slot-id="${p.id}"]`);
       if (slot) slot.setAttribute("stroke", "rgba(127,127,127,0.08)");
     }
-    // 放置 placedWrong（红边）
     for (const w of snap.placedWrong) {
       const p = this.pieces[w.id];
       if (!p) continue;
@@ -1294,14 +1206,11 @@ const Game = {
       p.wrongX = w.x; p.wrongY = w.y;
       this.bindDrag(el, p, "board");
     }
-    // 从剩余 pooled 中重新发牌
     this.dealNextGroup(true);
     this.updateProgress();
     if (manual) toast("存档已加载");
     return true;
   },
-
-  // ====== 板子手势（沿用 v2，双指缩放/单指平移/滚轮） ======
   bindBoardGestures() {
     let pinchDist = 0, lastScale = 1, panStart = null;
     this.boardArea.addEventListener("pointerdown", (e) => {
@@ -1345,66 +1254,164 @@ const Game = {
   },
   _ptrs: () => [],
 };
-
-// ---------- Router（v3 新增：hash 路由） ----------
 const Router = {
   init() {
     window.addEventListener("hashchange", () => this.dispatch());
     this.dispatch();
   },
   dispatch() {
-    let hash = location.hash.slice(1) || "/game";
-    if (!["/game", "/gallery", "/progress"].includes(hash)) hash = "/game";
-    const view = hash.slice(1); // game | gallery | progress
-    // 切换视图
+    let hash = location.hash.slice(1) || "/levels";
+    if (!["/levels", "/mode", "/game", "/gallery", "/progress"].includes(hash)) hash = "/levels";
+    const view = hash.slice(1); // levels | mode | game | gallery | progress
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
     const viewEl = $("view" + view.charAt(0).toUpperCase() + view.slice(1));
     if (viewEl) viewEl.classList.add("active");
-    // 切换 tab 高亮
     document.querySelectorAll(".tabs a").forEach(a => {
-      a.classList.toggle("active", a.getAttribute("href") === "#" + hash);
+      const href = a.getAttribute("href").slice(1);
+      a.classList.toggle("active", href === hash || (href === "/levels" && hash === "/game") || (href === "/levels" && hash === "/mode"));
     });
-    // body class（控制 topbar 控件显隐）
     document.body.className = "view-" + view;
-    // 视图特定回调
     if (view === "game") Game.onEnterGame();
+    else if (view === "levels") LevelsPage.render();
+    else if (view === "mode") ModePage.render();
     else if (view === "gallery") Gallery.render();
     else if (view === "progress") ProgressManager.render();
   },
   go(path) { location.hash = path; },
 };
-
-// ---------- Gallery（v3 新增：成就页） ----------
-const Gallery = {
+const LevelsPage = {
   render() {
-    let gallery = [];
-    try { gallery = JSON.parse(localStorage.getItem("puzzle_gallery_v3") || "[]"); } catch(e) {}
-    const byId = {};
-    gallery.forEach(g => { byId[g.levelId] = g; });
-    // 总进度
-    $("galleryCount").textContent = Object.keys(byId).length;
-    // 渲染 9 张卡片，按 难度×关卡 排序
-    const grid = $("galleryGrid");
+    const cleared = LEVELS.filter(lv => getClearedCount(lv.id) > 0).length;
+    $("levelsClearedCount").textContent = cleared;
+    const grid = $("levelsGrid");
     grid.innerHTML = "";
     for (const lv of LEVELS) {
-      const rec = byId[lv.id];
+      const unlocked = isUnlocked(lv.id);
+      const clearedN = getClearedCount(lv.id);
       const card = document.createElement("div");
-      card.className = "gallery-card";
+      card.className = "level-card" + (unlocked ? "" : " locked");
       const thumb = document.createElement("div");
-      thumb.className = "gallery-thumb";
-      if (rec && rec.thumbnail) {
+      thumb.className = "level-thumb";
+      if (unlocked) {
         const img = document.createElement("img");
-        img.src = rec.thumbnail;
+        img.src = lv.image;
         img.alt = lv.name;
         thumb.appendChild(img);
-        card.addEventListener("click", () => this.showFull(rec, lv));
       } else {
-        // 灰色锁图标
         const lock = document.createElement("div");
         lock.className = "lock-icon";
         lock.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 2C9.79 2 8 3.79 8 6v2H6v14h12V8h-2V6c0-2.21-1.79-4-4-4zm-2 6V6c0-1.1.9-2 2-2s2 .9 2 2v2h-4z"/></svg>';
         thumb.appendChild(lock);
-        card.addEventListener("click", () => toast("尚未通关此关卡"));
+      }
+      const num = document.createElement("div");
+      num.className = "level-badge-num";
+      num.textContent = lv.id;
+      thumb.appendChild(num);
+      card.appendChild(thumb);
+      const info = document.createElement("div");
+      info.className = "info";
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = lv.name;
+      info.appendChild(name);
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const dots = document.createElement("div");
+      dots.className = "level-clear-dots";
+      for (const m of MODES) {
+        const dot = document.createElement("div");
+        dot.className = "dot" + (isModeCleared(lv.id, m) ? " cleared" : "");
+        dot.title = DIFFICULTIES[m].label;
+        dots.appendChild(dot);
+      }
+      meta.appendChild(dots);
+      const countText = document.createElement("span");
+      countText.textContent = clearedN > 0 ? `${clearedN}/3 模式` : "未通关";
+      meta.appendChild(countText);
+      info.appendChild(meta);
+      card.appendChild(info);
+      if (unlocked) {
+        card.addEventListener("click", () => Game.selectLevel(lv.id));
+      } else {
+        card.addEventListener("click", () => toast("尚未解锁，请先通关前一关"));
+      }
+      grid.appendChild(card);
+    }
+  },
+};
+const ModePage = {
+  render() {
+    const lv = findLevelById(Game.pendingLevelId || Game.currentLevelId);
+    if (!lv) { Router.go("/levels"); return; }
+    $("modeLevelName").textContent = `${lv.name} · 选择模式`;
+    const clearedN = getClearedCount(lv.id);
+    $("modeSubText").textContent = clearedN > 0 ? `已通关 ${clearedN}/3 模式` : "选择一个模式开始挑战";
+    const grid = $("modeGrid");
+    grid.innerHTML = "";
+    for (const m of MODES) {
+      const cfg = DIFFICULTIES[m];
+      const cleared = isModeCleared(lv.id, m);
+      const card = document.createElement("div");
+      card.className = "mode-card" + (cleared ? " cleared" : "");
+      const info = document.createElement("div");
+      info.className = "mode-card-info";
+      const nameEl = document.createElement("div");
+      nameEl.className = "mode-card-name";
+      const badge = document.createElement("span");
+      badge.className = "diff-badge " + m;
+      badge.textContent = cfg.label;
+      nameEl.appendChild(badge);
+      const targetEl = document.createElement("span");
+      targetEl.textContent = `约 ${cfg.targetPieces} 块`;
+      nameEl.appendChild(targetEl);
+      info.appendChild(nameEl);
+      const desc = document.createElement("p");
+      desc.className = "mode-card-desc";
+      desc.textContent = cfg.preview ? "带淡原图参考，适合入门" : "无原图参考，硬核挑战";
+      info.appendChild(desc);
+      card.appendChild(info);
+      if (cleared) {
+        const rec = getClearedModes(lv.id)[m];
+        const stats = document.createElement("div");
+        stats.className = "mode-card-stats";
+        stats.textContent = `${fmtTime(rec.elapsed)} · ${rec.moves}步`;
+        card.appendChild(stats);
+        const check = document.createElement("div");
+        check.className = "mode-card-check";
+        check.textContent = "✓";
+        card.appendChild(check);
+      }
+      card.addEventListener("click", () => Game.startGame(lv.id, m));
+      grid.appendChild(card);
+    }
+  },
+};
+const Gallery = {
+  render() {
+    const unlockedCount = LEVELS.filter(lv => isUnlocked(lv.id)).length;
+    $("galleryCount").textContent = unlockedCount;
+    const grid = $("galleryGrid");
+    grid.innerHTML = "";
+    for (const lv of LEVELS) {
+      const unlocked = isUnlocked(lv.id);
+      const clearedModes = getClearedModes(lv.id);
+      const clearedN = Object.keys(clearedModes).length;
+      const card = document.createElement("div");
+      card.className = "gallery-card";
+      const thumb = document.createElement("div");
+      thumb.className = "gallery-thumb";
+      if (unlocked) {
+        const img = document.createElement("img");
+        img.src = lv.image;
+        img.alt = lv.name;
+        thumb.appendChild(img);
+        card.addEventListener("click", () => this.showFull(lv, clearedModes));
+      } else {
+        const lock = document.createElement("div");
+        lock.className = "lock-icon";
+        lock.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 2C9.79 2 8 3.79 8 6v2H6v14h12V8h-2V6c0-2.21-1.79-4-4-4zm-2 6V6c0-1.1.9-2 2-2s2 .9 2 2v2h-4z"/></svg>';
+        thumb.appendChild(lock);
+        card.addEventListener("click", () => toast("尚未解锁此关卡"));
       }
       card.appendChild(thumb);
       const info = document.createElement("div");
@@ -1415,55 +1422,50 @@ const Gallery = {
       info.appendChild(name);
       const meta = document.createElement("div");
       meta.className = "meta";
-      const badge = document.createElement("span");
-      badge.className = "diff-badge " + lv.difficulty;
-      badge.textContent = DIFFICULTIES[lv.difficulty].label;
-      meta.appendChild(badge);
-      if (rec) {
-        // 已通关：显示用时 + 步数
-        const time = document.createElement("span");
-        time.textContent = fmtTime(rec.elapsed);
-        meta.appendChild(time);
-        const movesEl = document.createElement("span");
-        movesEl.textContent = `${rec.moves}步`;
-        meta.appendChild(movesEl);
+      if (clearedN > 0) {
+        for (const m of MODES) {
+          if (clearedModes[m]) {
+            const badge = document.createElement("span");
+            badge.className = "diff-badge " + m;
+            badge.textContent = DIFFICULTIES[m].label;
+            meta.appendChild(badge);
+          }
+        }
+        const countEl = document.createElement("span");
+        countEl.textContent = `${clearedN}/3`;
+        meta.appendChild(countEl);
+      } else if (unlocked) {
+        const t = document.createElement("span");
+        t.textContent = "未通关";
+        meta.appendChild(t);
       } else {
-        const time = document.createElement("span");
-        time.textContent = "—";
-        meta.appendChild(time);
+        const t = document.createElement("span");
+        t.textContent = "locked";
+        meta.appendChild(t);
       }
       info.appendChild(meta);
       card.appendChild(info);
       grid.appendChild(card);
     }
   },
-  // 复用 v2 reveal 浮层放大显示完整图（v3 优先加载原图路径，回退缩略图）
-  showFull(rec, lv) {
-    // 通关信息：难度 · 用时 · 步数 · 通关时间
-    const elapsed = fmtTime(rec.elapsed);
-    const moves = rec.moves;
-    const completedAt = new Date(rec.completedAt);
-    const ts = `${completedAt.getFullYear()}-${(completedAt.getMonth()+1).toString().padStart(2,'0')}-${completedAt.getDate().toString().padStart(2,'0')}`;
+  showFull(lv, clearedModes) {
     $("revealTitle").textContent = lv.name;
-    $("revealSubText").textContent = `${DIFFICULTIES[lv.difficulty].label} · 用时 ${elapsed} · ${moves} 步 · ${ts}`;
-    // 优先 fullImage（原图路径/dataURL），回退 thumbnail（缩略图 dataURL）
-    const src = rec.fullImage || rec.thumbnail;
-    if (src && src.startsWith("images/")) {
-      // 关卡图片：异步加载，加载失败回退缩略图
-      const img = new Image();
-      img.onload = () => { $("revealImg").src = img.src; };
-      img.onerror = () => { $("revealImg").src = rec.thumbnail; };
-      img.src = src;
-    } else {
-      $("revealImg").src = src;
+    const parts = [];
+    for (const m of MODES) {
+      if (clearedModes[m]) {
+        const rec = clearedModes[m];
+        parts.push(`${DIFFICULTIES[m].label}: ${fmtTime(rec.elapsed)} · ${rec.moves}步`);
+      }
     }
+    $("revealSubText").textContent = parts.length > 0 ? parts.join(" | ") : "尚未通关";
+    const img = new Image();
+    img.onload = () => { $("revealImg").src = img.src; };
+    img.onerror = () => { $("revealImg").src = ""; };
+    img.src = lv.image;
     $("reveal").classList.add("show");
-    // 隐藏可能存在的 winModal
     $("winModal").classList.remove("show");
   },
 };
-
-// ---------- ProgressManager（v3 新增：本地存档管理） ----------
 const ProgressManager = {
   render() {
     this.updateSubTitle();
@@ -1471,10 +1473,12 @@ const ProgressManager = {
     list.innerHTML = "";
     const items = [];
     for (const lv of LEVELS) {
-      let snap = null;
-      try { snap = JSON.parse(localStorage.getItem(`puzzle_progress_${lv.id}`) || "null"); } catch(e) {}
-      if (!snap) continue;
-      items.push({ lv, snap });
+      for (const m of MODES) {
+        let snap = null;
+        try { snap = JSON.parse(localStorage.getItem(`puzzle_progress_v4_${lv.id}_${m}`) || "null"); } catch(e) {}
+        if (!snap) continue;
+        items.push({ lv, mode: m, snap });
+      }
     }
     if (items.length === 0) {
       const e = document.createElement("div");
@@ -1483,13 +1487,12 @@ const ProgressManager = {
       list.appendChild(e);
       return;
     }
-    // 按最后保存时间倒序
     items.sort((a, b) => (b.snap.updatedAt || 0) - (a.snap.updatedAt || 0));
     for (const it of items) {
-      const { lv, snap } = it;
+      const { lv, mode, snap } = it;
       const placedN = (snap.placedCorrect ? snap.placedCorrect.length : 0)
                     + (snap.placedWrong ? snap.placedWrong.length : 0);
-      const total = totalOf(lv);
+      const total = snap.cols * snap.rows || totalOf(lv);
       const item = document.createElement("div");
       item.className = "save-item";
       const info = document.createElement("div");
@@ -1498,8 +1501,8 @@ const ProgressManager = {
       name.className = "save-item-name";
       name.appendChild(document.createTextNode(lv.name));
       const badge = document.createElement("span");
-      badge.className = "diff-badge " + lv.difficulty;
-      badge.textContent = DIFFICULTIES[lv.difficulty].label;
+      badge.className = "diff-badge " + mode;
+      badge.textContent = DIFFICULTIES[mode].label;
       name.appendChild(badge);
       info.appendChild(name);
       const meta = document.createElement("div");
@@ -1514,53 +1517,37 @@ const ProgressManager = {
       btn.textContent = "继续";
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        this.jumpTo(lv);
+        this.jumpTo(lv, mode);
       });
       item.appendChild(btn);
-      item.addEventListener("click", () => this.jumpTo(lv));
+      item.addEventListener("click", () => this.jumpTo(lv, mode));
       list.appendChild(item);
     }
   },
-
-  // 跳转到某关并加载存档
-  jumpTo(lv) {
-    location.hash = "#/game";
-    // 等 Router dispatch 完成、view-game 显示后再 layout
-    // loadLevel 异步完成后会自动调 loadProgress（autoLoadProgress=true）
-    setTimeout(() => {
-      Game.loadLevel(lv.difficulty, findLevelsByDiff(lv.difficulty).indexOf(lv), false, true);
-    }, 50);
+  jumpTo(lv, mode) {
+    Game.startGame(lv.id, mode);
   },
-
-  // 显式保存当前进度
   saveCurrent() {
     if (!Game.level) { toast("尚未开始游戏"); return; }
     Game.saveProgress();
     toast("已保存");
     this.render();
   },
-
-  // 清除当前关存档（二次确认）
   clearCurrent() {
     if (!Game.level) { toast("尚未开始游戏"); return; }
-    if (!confirm(`确认清除「${Game.level.name} · ${DIFFICULTIES[Game.currentDifficulty].label}」的存档并重置当前关？`)) return;
-    try { localStorage.removeItem(`puzzle_progress_${Game.level.id}`); } catch(e) {}
-    // 重置当前关（重新加载，不保留 userImage 状态避免图片被清掉——其实保留更友好）
-    Game.loadLevel(Game.currentDifficulty, Game.levelIdx, !!Game.userImage);
-    toast("已清除当前关存档");
+    if (!confirm(`确认清除「${Game.level.name} · ${DIFFICULTIES[Game.currentMode].label}」的存档并重置？`)) return;
+    try { localStorage.removeItem(`puzzle_progress_v4_${Game.level.id}_${Game.currentMode}`); } catch(e) {}
+    Game.loadLevel(Game.level, Game.currentMode, !!Game.userImage);
+    toast("已清除存档");
     this.render();
   },
-
-  // 更新存档页副标题
   updateSubTitle() {
     const sub = $("progressSubTitle");
     if (!sub) return;
     if (!Game.level) { sub.textContent = "当前关卡：—"; return; }
-    sub.textContent = `当前关卡：${Game.level.name} · ${DIFFICULTIES[Game.currentDifficulty].label}（${Game.level.id}）`;
+    sub.textContent = `当前关卡：${Game.level.name} · ${DIFFICULTIES[Game.currentMode].label}`;
   },
 };
-
-// 全局指针跟踪（沿用 v2，双指 pinch 缩放用）
 (function() {
   const ptrs = new Map();
   document.addEventListener("pointerdown", e => ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }));
@@ -1569,7 +1556,6 @@ const ProgressManager = {
   document.addEventListener("pointercancel", e => ptrs.delete(e.pointerId));
   Game._ptrs = () => Array.from(ptrs.values());
 })();
-
 document.addEventListener("DOMContentLoaded", () => Game.init());
 </script>
 </body>
