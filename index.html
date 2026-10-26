@@ -506,6 +506,7 @@
       <h2>图库</h2>
       <div class="gallery-progress">已解锁 <span id="galleryCount">0</span> / <span id="galleryTotalCount">0</span> 关</div>
     </div>
+    <div class="pager" id="galleryPager"></div>
     <div class="gallery-grid" id="galleryGrid"></div>
   </main>
   <main class="view view-progress" id="viewProgress">
@@ -621,11 +622,11 @@ const DIFFICULTIES = {
 };
 const MODES = ["easy", "hard", "nightmare"];
 const LEVELS = [
-  { id: 1, name: "图一", image: "images/level-1.jpg", seed: 0 },
-  { id: 2, name: "图二", image: "images/level-2.jpg", seed: 1 },
-  { id: 3, name: "图三", image: "images/level-3.jpg", seed: 2 },
-  { id: 4, name: "图四", image: "images/level-4.jpg", seed: 3 },
-  { id: 5, name: "图五", image: "images/level-5.jpg", seed: 4 },
+  { id: 1, name: "图一", image: "images/level-42.jpg", seed: 0 },
+  { id: 2, name: "图二", image: "images/level-78.jpg", seed: 1 },
+  { id: 3, name: "图三", image: "images/level-15.jpg", seed: 2 },
+  { id: 4, name: "图四", image: "images/level-93.jpg", seed: 3 },
+  { id: 5, name: "图五", image: "images/level-60.jpg", seed: 4 },
   { id: 6, name: "图六", image: "images/level-6.jpg", seed: 5 },
   { id: 7, name: "图七", image: "images/level-7.jpg", seed: 6 },
   { id: 8, name: "图八", image: "images/level-8.jpg", seed: 7 },
@@ -635,7 +636,7 @@ const LEVELS = [
   { id: 12, name: "图12", image: "images/level-12.jpg", seed: 11 },
   { id: 13, name: "图13", image: "images/level-13.jpg", seed: 12 },
   { id: 14, name: "图14", image: "images/level-14.jpg", seed: 13 },
-  { id: 15, name: "图15", image: "images/level-15.jpg", seed: 14 },
+  { id: 15, name: "图15", image: "images/level-3.jpg", seed: 14 },
   { id: 16, name: "图16", image: "images/level-16.jpg", seed: 15 },
   { id: 17, name: "图17", image: "images/level-17.jpg", seed: 16 },
   { id: 18, name: "图18", image: "images/level-18.jpg", seed: 17 },
@@ -660,7 +661,7 @@ const LEVELS = [
   { id: 39, name: "图39", image: "images/level-39.jpg", seed: 38 },
   { id: 40, name: "图40", image: "images/level-40.jpg", seed: 39 },
   { id: 41, name: "图41", image: "images/level-41.jpg", seed: 40 },
-  { id: 42, name: "图42", image: "images/level-42.jpg", seed: 41 },
+  { id: 42, name: "图42", image: "images/level-1.jpg", seed: 41 },
   { id: 43, name: "图43", image: "images/level-43.jpg", seed: 42 },
   { id: 44, name: "图44", image: "images/level-44.jpg", seed: 43 },
   { id: 45, name: "图45", image: "images/level-45.jpg", seed: 44 },
@@ -677,7 +678,7 @@ const LEVELS = [
   { id: 56, name: "图56", image: "images/level-56.jpg", seed: 55 },
   { id: 57, name: "图57", image: "images/level-57.jpg", seed: 56 },
   { id: 59, name: "图59", image: "images/level-59.jpg", seed: 58 },
-  { id: 60, name: "图60", image: "images/level-60.jpg", seed: 59 },
+  { id: 60, name: "图60", image: "images/level-5.jpg", seed: 59 },
   { id: 61, name: "图61", image: "images/level-61.jpg", seed: 60 },
   { id: 62, name: "图62", image: "images/level-62.jpg", seed: 61 },
   { id: 63, name: "图63", image: "images/level-63.jpg", seed: 62 },
@@ -695,7 +696,7 @@ const LEVELS = [
   { id: 75, name: "图75", image: "images/level-75.jpg", seed: 74 },
   { id: 76, name: "图76", image: "images/level-76.jpg", seed: 75 },
   { id: 77, name: "图77", image: "images/level-77.jpg", seed: 76 },
-  { id: 78, name: "图78", image: "images/level-78.jpg", seed: 77 },
+  { id: 78, name: "图78", image: "images/level-2.jpg", seed: 77 },
   { id: 79, name: "图79", image: "images/level-79.jpg", seed: 78 },
   { id: 80, name: "图80", image: "images/level-80.jpg", seed: 79 },
   { id: 81, name: "图81", image: "images/level-81.jpg", seed: 80 },
@@ -710,7 +711,7 @@ const LEVELS = [
   { id: 90, name: "图90", image: "images/level-90.jpg", seed: 89 },
   { id: 91, name: "图91", image: "images/level-91.jpg", seed: 90 },
   { id: 92, name: "图92", image: "images/level-92.jpg", seed: 91 },
-  { id: 93, name: "图93", image: "images/level-93.jpg", seed: 92 },
+  { id: 93, name: "图93", image: "images/level-4.jpg", seed: 92 },
   { id: 94, name: "图94", image: "images/level-94.jpg", seed: 93 },
   { id: 95, name: "图95", image: "images/level-95.jpg", seed: 94 },
   { id: 96, name: "图96", image: "images/level-96.jpg", seed: 95 },
@@ -1640,13 +1641,46 @@ const ModePage = {
   },
 };
 const Gallery = {
+  currentPage: 0,
+  perPage: 10,
+  totalPages() { return Math.max(1, Math.ceil(LEVELS.length / this.perPage)); },
+  renderPager() {
+    const pager = $("galleryPager");
+    pager.innerHTML = "";
+    const tp = this.totalPages();
+    const cp = this.currentPage;
+    const mk = (label, page, opts) => {
+      const b = document.createElement("button");
+      b.className = "pager-btn" + (opts && opts.active ? " active" : "");
+      b.textContent = label;
+      b.disabled = opts && opts.disabled;
+      if (!opts || !opts.disabled) b.addEventListener("click", () => { this.currentPage = page; this.render(); });
+      pager.appendChild(b);
+    };
+    mk("‹", cp - 1, { disabled: cp === 0 });
+    if (tp <= 7) {
+      for (let i = 0; i < tp; i++) mk(i + 1, i, { active: i === cp });
+    } else {
+      mk(1, 0, { active: cp === 0 });
+      if (cp > 2) { const e = document.createElement("span"); e.className = "pager-ellipsis"; e.textContent = "…"; pager.appendChild(e); }
+      for (let i = Math.max(1, cp - 1); i <= Math.min(tp - 2, cp + 1); i++) mk(i + 1, i, { active: i === cp });
+      if (cp < tp - 3) { const e = document.createElement("span"); e.className = "pager-ellipsis"; e.textContent = "…"; pager.appendChild(e); }
+      mk(tp, tp - 1, { active: cp === tp - 1 });
+    }
+    mk("›", cp + 1, { disabled: cp === tp - 1 });
+  },
   render() {
+    if (this.currentPage >= this.totalPages()) this.currentPage = 0;
     const unlockedCount = LEVELS.filter(lv => isUnlocked(lv.id)).length;
     $("galleryCount").textContent = unlockedCount;
     $("galleryTotalCount").textContent = LEVELS.length;
+    this.renderPager();
     const grid = $("galleryGrid");
     grid.innerHTML = "";
-    for (const lv of LEVELS) {
+    const start = this.currentPage * this.perPage;
+    const end = Math.min(start + this.perPage, LEVELS.length);
+    for (let idx = start; idx < end; idx++) {
+      const lv = LEVELS[idx];
       const unlocked = isUnlocked(lv.id);
       const clearedModes = getClearedModes(lv.id);
       const clearedN = Object.keys(clearedModes).length;
