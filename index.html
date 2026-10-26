@@ -420,11 +420,9 @@
         <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
         <span class="progress-text" id="progressText">0 / 0</span>
       </div>
-      <label class="btn btn-icon" id="uploadBtn" for="fileInput" title="从相册选图">选图</label>
       <button class="btn btn-icon" id="hintBtn" title="按住查看原图">原图</button>
       <button class="btn btn-icon" id="refreshBtn" title="重置当前关">刷新</button>
       <button class="btn btn-icon" id="backToLevelsBtn" title="返回关卡列表">关卡</button>
-      <input type="file" id="fileInput" accept="image/*">
     </div>
   </header>
   <main class="view view-levels" id="viewLevels">
@@ -655,7 +653,6 @@ const Game = {
   placedCount: 0, moves: 0, startTime: 0,
   boardScale: 1, boardOffsetX: 0, boardOffsetY: 0,
   boardArea: null, board: null, boardInner: null, boardBgImg: null, boardBgSvg: null, boardSvg: null, poolTrack: null,
-  userImage: null, // 用户上传的 Image 对象（持久于本次会话）
   init() {
     this.boardArea = $("boardArea");
     this.board = $("board");
@@ -669,7 +666,6 @@ const Game = {
     $("nextLevelBtn").addEventListener("click", () => this.nextLevel());
     $("replayBtn").addEventListener("click", () => { $("winModal").classList.remove("show"); $("reveal").classList.add("show"); });
     $("revealCloseBtn").addEventListener("click", () => $("reveal").classList.remove("show"));
-    $("fileInput").addEventListener("change", (e) => this.onFileSelected(e));
     const hintBtn = $("hintBtn");
     const showP = () => this.boardArea.classList.add("show-preview");
     const hideP = () => this.boardArea.classList.remove("show-preview");
@@ -705,27 +701,6 @@ const Game = {
       this.loadLevel(lv, mode, false, true);
     }, 50);
   },
-  onFileSelected(e) {
-    const file = e.target.files && e.target.files[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { toast("请选图片文件"); return; }
-    $("loading").classList.add("show");
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        this.userImage = img;
-        $("loading").classList.remove("show");
-        if (this.level) this.loadLevel(this.level, this.currentMode, true);
-        toast("已加载本地图片，开始拼吧");
-      };
-      img.onerror = () => { $("loading").classList.remove("show"); toast("图片加载失败"); };
-      img.src = ev.target.result;
-    };
-    reader.onerror = () => { $("loading").classList.remove("show"); toast("读取失败"); };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  },
   buildImageCanvas(src) {
     const cv = document.createElement("canvas");
     cv.width = this.totalW; cv.height = this.totalH;
@@ -737,7 +712,7 @@ const Game = {
     ctx.drawImage(src, dx, dy, dw, dh);
     return cv;
   },
-  loadLevel(lv, mode, keepUserImage = false, autoLoadProgress = false) {
+  loadLevel(lv, mode, _keepUserImage = false, autoLoadProgress = false) {
     this.level = lv;
     this.currentMode = mode;
     this.currentDifficulty = mode;  // 兼容旧代码引用 currentDifficulty
@@ -773,11 +748,6 @@ const Game = {
       $("loading").classList.remove("show");
       if (autoLoadProgress) this.loadProgress(false);
     };
-    if (keepUserImage && this.userImage) {
-      finalize(this.userImage, "upload");
-      return;
-    }
-    this.userImage = null;
     if (lv.image) {
       $("loading").classList.add("show");
       const img = new Image();
@@ -1537,7 +1507,7 @@ const ProgressManager = {
     if (!Game.level) { toast("尚未开始游戏"); return; }
     if (!confirm(`确认清除「${Game.level.name} · ${DIFFICULTIES[Game.currentMode].label}」的存档并重置？`)) return;
     try { localStorage.removeItem(`puzzle_progress_v4_${Game.level.id}_${Game.currentMode}`); } catch(e) {}
-    Game.loadLevel(Game.level, Game.currentMode, !!Game.userImage);
+    Game.loadLevel(Game.level, Game.currentMode);
     toast("已清除存档");
     this.render();
   },
