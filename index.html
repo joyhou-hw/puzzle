@@ -79,6 +79,7 @@
     transition: background 0.15s; white-space: nowrap;
   }
   .btn:active { background: var(--surface-muted); }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
   .btn-primary { background: var(--brand); color: #004d26; border-color: var(--brand); font-weight: 600; }
   .btn-primary:active { filter: brightness(0.95); }
   .btn-icon { padding: 7px 9px; }
@@ -126,11 +127,13 @@
   }
   .board-area.show-preview .board-bg-img { opacity: 0.85; filter: none; }
   /* 噩梦模式：用 SVG 原生 mask 挖空六边形网格区域，只显锯齿边缘。
-     img（整张原图）隐藏，svg（带挖空 mask 的图）显示，避免 iOS Safari 对 CSS mask data URL 的兼容性问题 */
+     img（整张原图）隐藏，svg（带挖空 mask 的图）显示，避免 iOS Safari 对 CSS mask data URL 的兼容性问题。
+     show-preview 时：直接显示完整 boardBgImg（整张原图），隐藏挖空 SVG */
   .board-bg-svg { display: none; }
   .board-area.no-preview .board-bg-img#boardBgImg { display: none; }
   .board-area.no-preview .board-bg-svg { display: block; opacity: 0.55; filter: none; }
-  .board-area.no-preview.show-preview .board-bg-svg { opacity: 0.92; }
+  .board-area.no-preview.show-preview .board-bg-svg { display: none; }
+  .board-area.no-preview.show-preview .board-bg-img#boardBgImg { display: block; opacity: 0.85; filter: none; }
   .board-svg { position: absolute; top: 0; left: 0; pointer-events: none; }
   .piece {
     position: absolute;
@@ -667,12 +670,35 @@ const Game = {
     $("replayBtn").addEventListener("click", () => { $("winModal").classList.remove("show"); $("reveal").classList.add("show"); });
     $("revealCloseBtn").addEventListener("click", () => $("reveal").classList.remove("show"));
     const hintBtn = $("hintBtn");
-    const showP = () => this.boardArea.classList.add("show-preview");
-    const hideP = () => this.boardArea.classList.remove("show-preview");
-    hintBtn.addEventListener("pointerdown", showP);
-    hintBtn.addEventListener("pointerup", hideP);
-    hintBtn.addEventListener("pointerleave", hideP);
-    hintBtn.addEventListener("pointercancel", hideP);
+    this._hintTimer = null;
+    this._hintCountdown = 0;
+    const HINT_SECONDS = 10;
+    const startHint = () => {
+      if (this._hintTimer) return; // 已经在显示中，忽略重复点击
+      this._hintCountdown = HINT_SECONDS;
+      this.boardArea.classList.add("show-preview");
+      hintBtn.disabled = true;
+      hintBtn.textContent = `原图 ${this._hintCountdown}s`;
+      this._hintTimer = setInterval(() => {
+        this._hintCountdown--;
+        if (this._hintCountdown <= 0) {
+          stopHint();
+        } else {
+          hintBtn.textContent = `原图 ${this._hintCountdown}s`;
+        }
+      }, 1000);
+    };
+    const stopHint = () => {
+      if (this._hintTimer) { clearInterval(this._hintTimer); this._hintTimer = null; }
+      this._hintCountdown = 0;
+      this.boardArea.classList.remove("show-preview");
+      hintBtn.disabled = false;
+      hintBtn.textContent = "原图";
+    };
+    hintBtn.addEventListener("click", () => {
+      if (this._hintTimer) stopHint(); // 显示中点击则提前关闭
+      else startHint();
+    });
     $("saveProgressBtn").addEventListener("click", () => ProgressManager.saveCurrent());
     $("loadProgressBtn").addEventListener("click", () => this.loadProgress(true));
     $("clearProgressBtn").addEventListener("click", () => ProgressManager.clearCurrent());
