@@ -268,6 +268,24 @@
   .levels-header h2 { margin: 0; font-size: 18px; font-weight: 600; }
   .levels-progress { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
   .levels-progress span { color: var(--brand); font-weight: 600; }
+  .welcome-banner {
+    flex: 0 0 auto; margin: 0 16px 8px; padding: 10px 14px;
+    background: linear-gradient(90deg, #fff3e5, #e5fff2);
+    border-radius: var(--radius); font-size: 13px; font-weight: 600;
+    color: var(--brand); text-align: center;
+    animation: welcomePulse 2s ease-in-out infinite;
+  }
+  @media (prefers-color-scheme: dark) {
+    .welcome-banner { background: linear-gradient(90deg, #663300, #004d26); }
+  }
+  @keyframes welcomePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.75; } }
+  .modal-mask input[type="text"] {
+    width: 100%; box-sizing: border-box; margin: 8px 0;
+    padding: 10px 12px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface);
+    color: var(--text); font: inherit; font-size: 14px;
+  }
+  .modal-mask input[type="text"]:focus { outline: none; border-color: var(--brand); }
   .levels-grid {
     flex: 1 1 auto; overflow-y: auto; overflow-x: hidden;
     padding: 8px 16px 16px;
@@ -433,6 +451,7 @@
       <h2>选择关卡</h2>
       <div class="levels-progress">已通关 <span id="levelsClearedCount">0</span> / 6 关</div>
     </div>
+    <div class="welcome-banner" id="welcomeBanner">欢迎老婆大人来玩游戏，祝老婆大人玩的开心！</div>
     <div class="levels-grid" id="levelsGrid"></div>
   </main>
   <main class="view view-mode" id="viewMode">
@@ -504,6 +523,17 @@
   </div>
   <div class="toast" id="toast"></div>
   <div class="loading" id="loading">处理图片中…</div>
+  <div class="modal-mask" id="secretModal">
+    <div class="modal">
+      <h2>口令</h2>
+      <p id="secretSubText">输入口令解锁关卡</p>
+      <input type="text" id="secretInput" placeholder="请输入口令" autocomplete="off">
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="secretConfirmBtn">确认</button>
+        <button class="btn" id="secretCancelBtn">取消</button>
+      </div>
+    </div>
+  </div>
 <script>
 "use strict";
 /* ============================================================
@@ -583,6 +613,17 @@ function getUnlocked() {
   try { return JSON.parse(localStorage.getItem(UNLOCK_KEY) || "[1]"); } catch(e) { return [1]; }
 }
 function isUnlocked(levelId) { return getUnlocked().includes(levelId); }
+function unlockLevel(levelId) {
+  const u = getUnlocked();
+  if (!u.includes(levelId)) {
+    u.push(levelId);
+    localStorage.setItem(UNLOCK_KEY, JSON.stringify(u));
+  }
+}
+function unlockAllLevels() {
+  const all = LEVELS.map(l => l.id);
+  localStorage.setItem(UNLOCK_KEY, JSON.stringify(all));
+}
 function unlockNext(levelId) {
   const u = getUnlocked();
   const next = levelId + 1;
@@ -1275,6 +1316,55 @@ const Router = {
   },
   go(path) { location.hash = path; },
 };
+const SecretDialog = {
+  targetLevel: null,
+  open(levelId) {
+    this.targetLevel = levelId;
+    const modal = $("secretModal");
+    const input = $("secretInput");
+    $("secretSubText").textContent = `解锁关卡 ${levelId}`;
+    input.value = "";
+    modal.classList.add("show");
+    setTimeout(() => input.focus(), 50);
+  },
+  close() {
+    $("secretModal").classList.remove("show");
+    this.targetLevel = null;
+  },
+  confirm() {
+    const v = ($("secretInput").value || "").trim();
+    const lv = this.targetLevel;
+    if (v === "老公我爱你生生世世") {
+      unlockAllLevels();
+      this.close();
+      LevelsPage.render();
+      toast("已解锁全部关卡");
+    } else if (v === "老公我爱你") {
+      if (lv != null) {
+        unlockLevel(lv);
+        this.close();
+        LevelsPage.render();
+        toast(`已解锁关卡 ${lv}`);
+      } else {
+        toast("未指定关卡");
+      }
+    } else {
+      toast("口令错误");
+    }
+  },
+  init() {
+    $("secretConfirmBtn").addEventListener("click", () => this.confirm());
+    $("secretCancelBtn").addEventListener("click", () => this.close());
+    $("secretInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") this.confirm();
+      else if (e.key === "Escape") this.close();
+    });
+    $("secretModal").addEventListener("click", (e) => {
+      if (e.target === $("secretModal")) this.close();
+    });
+  },
+};
+SecretDialog.init();
 const LevelsPage = {
   render() {
     const cleared = LEVELS.filter(lv => getClearedCount(lv.id) > 0).length;
@@ -1329,7 +1419,18 @@ const LevelsPage = {
       if (unlocked) {
         card.addEventListener("click", () => Game.selectLevel(lv.id));
       } else {
-        card.addEventListener("click", () => toast("尚未解锁，请先通关前一关"));
+        let clickCount = 0, clickTimer = null;
+        card.addEventListener("click", () => {
+          clickCount++;
+          if (clickTimer) clearTimeout(clickTimer);
+          clickTimer = setTimeout(() => { clickCount = 0; }, 600);
+          if (clickCount >= 3) {
+            clickCount = 0;
+            SecretDialog.open(lv.id);
+          } else {
+            toast("尚未解锁，请先通关前一关");
+          }
+        });
       }
       grid.appendChild(card);
     }
