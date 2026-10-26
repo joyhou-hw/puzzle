@@ -237,14 +237,15 @@
   }
   .gallery-card {
     background: var(--surface); border-radius: var(--radius-card);
-    border: 1px solid var(--border); overflow: hidden;
+    border: 1px solid var(--border);
     cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
-    display: flex; flex-direction: column;
+    display: flex; flex-direction: column; min-height: 0;
   }
   .gallery-card:hover { box-shadow: var(--shadow); }
   .gallery-card:active { transform: scale(0.98); }
   .gallery-thumb {
-    width: 100%; height: 35vw; min-height: 110px; max-height: 160px;
+    width: 100%; height: 30vw; min-height: 90px; max-height: 140px;
+    flex-shrink: 0;
     background: var(--surface-muted);
     display: flex; align-items: center; justify-content: center;
     overflow: hidden; position: relative;
@@ -254,8 +255,8 @@
     width: 36px; height: 36px; color: var(--text-muted); opacity: 0.35;
   }
   .gallery-thumb .lock-icon svg { width: 100%; height: 100%; fill: currentColor; }
-  .gallery-card .info { padding: 8px 10px; }
-  .gallery-card .name { font-size: 13px; font-weight: 600; margin: 0 0 4px; }
+  .gallery-card .info { padding: 6px 10px; flex-shrink: 0; }
+  .gallery-card .name { font-size: 13px; font-weight: 600; margin: 0 0 2px; line-height: 1.3; }
   .gallery-card .meta {
     font-size: 11px; color: var(--text-muted);
     display: flex; justify-content: space-between; align-items: center; gap: 6px;
@@ -315,16 +316,17 @@
   }
   .level-card {
     background: var(--surface); border-radius: var(--radius-card);
-    border: 1px solid var(--border); overflow: hidden;
+    border: 1px solid var(--border);
     cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
     display: flex; flex-direction: column;
-    position: relative;
+    position: relative; min-height: 0;
   }
   .level-card:hover { box-shadow: var(--shadow); }
   .level-card:active { transform: scale(0.98); }
   .level-card.locked { opacity: 0.55; cursor: not-allowed; }
   .level-thumb {
-    width: 100%; height: 35vw; min-height: 110px; max-height: 160px;
+    width: 100%; height: 30vw; min-height: 90px; max-height: 140px;
+    flex-shrink: 0;
     background: var(--surface-muted);
     display: flex; align-items: center; justify-content: center;
     overflow: hidden; position: relative;
@@ -341,8 +343,8 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 12px; font-weight: 700;
   }
-  .level-card .info { padding: 8px 10px; }
-  .level-card .name { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+  .level-card .info { padding: 6px 10px; flex-shrink: 0; }
+  .level-card .name { font-size: 13px; font-weight: 600; margin: 0 0 2px; line-height: 1.3; }
   .level-card .meta {
     font-size: 11px; color: var(--text-muted);
     display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
@@ -389,10 +391,12 @@
   .diff-badge.easy { background: #e5fff2; color: #004d26; }
   .diff-badge.hard { background: #fff3e5; color: #663300; }
   .diff-badge.nightmare { background: #ffe5e5; color: #660000; }
+  .diff-badge.hell { background: #1a0000; color: #ff3333; border: 1px solid #ff3333; }
   @media (prefers-color-scheme: dark) {
     .diff-badge.easy { background: #004d26; color: #e5fff2; }
     .diff-badge.hard { background: #663300; color: #fff3e5; }
     .diff-badge.nightmare { background: #660000; color: #ffe5e5; }
+    .diff-badge.hell { background: #000; color: #ff3333; border: 1px solid #ff3333; }
   }
   .progress-header {
     flex: 0 0 auto; padding: 16px;
@@ -619,110 +623,111 @@ const DIFFICULTIES = {
   easy:      { hexW: 92, groupSize: 12, preview: true,  label: "简单",   targetPieces: 35 },
   hard:      { hexW: 64, groupSize: 17, preview: true,  label: "困难",   targetPieces: 75 },
   nightmare: { hexW: 64, groupSize: 17, preview: false, label: "噩梦",   targetPieces: 75 },
+  hell:      { hexW: 52, groupSize: 20, preview: false, label: "地狱",   targetPieces: 100 },
 };
-const MODES = ["easy", "hard", "nightmare"];
+const MODES = ["easy", "hard", "nightmare", "hell"];
 const LEVELS = [
-  { id: 1, name: "图一", image: "images/level-42.jpg", seed: 0 },
-  { id: 2, name: "图二", image: "images/level-78.jpg", seed: 1 },
-  { id: 3, name: "图三", image: "images/level-15.jpg", seed: 2 },
-  { id: 4, name: "图四", image: "images/level-93.jpg", seed: 3 },
-  { id: 5, name: "图五", image: "images/level-60.jpg", seed: 4 },
-  { id: 6, name: "图六", image: "images/level-6.jpg", seed: 5 },
-  { id: 7, name: "图七", image: "images/level-7.jpg", seed: 6 },
-  { id: 8, name: "图八", image: "images/level-8.jpg", seed: 7 },
-  { id: 9, name: "图九", image: "images/level-9.jpg", seed: 8 },
-  { id: 10, name: "图10", image: "images/level-10.jpg", seed: 9 },
-  { id: 11, name: "图11", image: "images/level-11.jpg", seed: 10 },
-  { id: 12, name: "图12", image: "images/level-12.jpg", seed: 11 },
-  { id: 13, name: "图13", image: "images/level-13.jpg", seed: 12 },
-  { id: 14, name: "图14", image: "images/level-14.jpg", seed: 13 },
-  { id: 15, name: "图15", image: "images/level-3.jpg", seed: 14 },
-  { id: 16, name: "图16", image: "images/level-16.jpg", seed: 15 },
-  { id: 17, name: "图17", image: "images/level-17.jpg", seed: 16 },
-  { id: 18, name: "图18", image: "images/level-18.jpg", seed: 17 },
-  { id: 19, name: "图19", image: "images/level-19.jpg", seed: 18 },
-  { id: 20, name: "图20", image: "images/level-20.jpg", seed: 19 },
-  { id: 21, name: "图21", image: "images/level-21.jpg", seed: 20 },
-  { id: 22, name: "图22", image: "images/level-22.jpg", seed: 21 },
-  { id: 23, name: "图23", image: "images/level-23.jpg", seed: 22 },
-  { id: 24, name: "图24", image: "images/level-24.jpg", seed: 23 },
-  { id: 25, name: "图25", image: "images/level-25.jpg", seed: 24 },
-  { id: 26, name: "图26", image: "images/level-26.jpg", seed: 25 },
-  { id: 28, name: "图28", image: "images/level-28.jpg", seed: 27 },
-  { id: 29, name: "图29", image: "images/level-29.jpg", seed: 28 },
-  { id: 30, name: "图30", image: "images/level-30.jpg", seed: 29 },
-  { id: 31, name: "图31", image: "images/level-31.jpg", seed: 30 },
-  { id: 32, name: "图32", image: "images/level-32.jpg", seed: 31 },
-  { id: 33, name: "图33", image: "images/level-33.jpg", seed: 32 },
-  { id: 34, name: "图34", image: "images/level-34.jpg", seed: 33 },
-  { id: 36, name: "图36", image: "images/level-36.jpg", seed: 35 },
-  { id: 37, name: "图37", image: "images/level-37.jpg", seed: 36 },
-  { id: 38, name: "图38", image: "images/level-38.jpg", seed: 37 },
-  { id: 39, name: "图39", image: "images/level-39.jpg", seed: 38 },
-  { id: 40, name: "图40", image: "images/level-40.jpg", seed: 39 },
-  { id: 41, name: "图41", image: "images/level-41.jpg", seed: 40 },
-  { id: 42, name: "图42", image: "images/level-1.jpg", seed: 41 },
-  { id: 43, name: "图43", image: "images/level-43.jpg", seed: 42 },
-  { id: 44, name: "图44", image: "images/level-44.jpg", seed: 43 },
-  { id: 45, name: "图45", image: "images/level-45.jpg", seed: 44 },
-  { id: 46, name: "图46", image: "images/level-46.jpg", seed: 45 },
-  { id: 47, name: "图47", image: "images/level-47.jpg", seed: 46 },
-  { id: 48, name: "图48", image: "images/level-48.jpg", seed: 47 },
-  { id: 49, name: "图49", image: "images/level-49.jpg", seed: 48 },
-  { id: 50, name: "图50", image: "images/level-50.jpg", seed: 49 },
-  { id: 51, name: "图51", image: "images/level-51.jpg", seed: 50 },
-  { id: 52, name: "图52", image: "images/level-52.jpg", seed: 51 },
-  { id: 53, name: "图53", image: "images/level-53.jpg", seed: 52 },
-  { id: 54, name: "图54", image: "images/level-54.jpg", seed: 53 },
-  { id: 55, name: "图55", image: "images/level-55.jpg", seed: 54 },
-  { id: 56, name: "图56", image: "images/level-56.jpg", seed: 55 },
-  { id: 57, name: "图57", image: "images/level-57.jpg", seed: 56 },
-  { id: 59, name: "图59", image: "images/level-59.jpg", seed: 58 },
-  { id: 60, name: "图60", image: "images/level-5.jpg", seed: 59 },
-  { id: 61, name: "图61", image: "images/level-61.jpg", seed: 60 },
-  { id: 62, name: "图62", image: "images/level-62.jpg", seed: 61 },
-  { id: 63, name: "图63", image: "images/level-63.jpg", seed: 62 },
-  { id: 64, name: "图64", image: "images/level-64.jpg", seed: 63 },
-  { id: 65, name: "图65", image: "images/level-65.jpg", seed: 64 },
-  { id: 66, name: "图66", image: "images/level-66.jpg", seed: 65 },
-  { id: 67, name: "图67", image: "images/level-67.jpg", seed: 66 },
-  { id: 68, name: "图68", image: "images/level-68.jpg", seed: 67 },
-  { id: 69, name: "图69", image: "images/level-69.jpg", seed: 68 },
-  { id: 70, name: "图70", image: "images/level-70.jpg", seed: 69 },
-  { id: 71, name: "图71", image: "images/level-71.jpg", seed: 70 },
-  { id: 72, name: "图72", image: "images/level-72.jpg", seed: 71 },
-  { id: 73, name: "图73", image: "images/level-73.jpg", seed: 72 },
-  { id: 74, name: "图74", image: "images/level-74.jpg", seed: 73 },
-  { id: 75, name: "图75", image: "images/level-75.jpg", seed: 74 },
-  { id: 76, name: "图76", image: "images/level-76.jpg", seed: 75 },
-  { id: 77, name: "图77", image: "images/level-77.jpg", seed: 76 },
-  { id: 78, name: "图78", image: "images/level-2.jpg", seed: 77 },
-  { id: 79, name: "图79", image: "images/level-79.jpg", seed: 78 },
-  { id: 80, name: "图80", image: "images/level-80.jpg", seed: 79 },
-  { id: 81, name: "图81", image: "images/level-81.jpg", seed: 80 },
-  { id: 82, name: "图82", image: "images/level-82.jpg", seed: 81 },
-  { id: 83, name: "图83", image: "images/level-83.jpg", seed: 82 },
-  { id: 84, name: "图84", image: "images/level-84.jpg", seed: 83 },
-  { id: 85, name: "图85", image: "images/level-85.jpg", seed: 84 },
-  { id: 86, name: "图86", image: "images/level-86.jpg", seed: 85 },
-  { id: 87, name: "图87", image: "images/level-87.jpg", seed: 86 },
-  { id: 88, name: "图88", image: "images/level-88.jpg", seed: 87 },
-  { id: 89, name: "图89", image: "images/level-89.jpg", seed: 88 },
-  { id: 90, name: "图90", image: "images/level-90.jpg", seed: 89 },
-  { id: 91, name: "图91", image: "images/level-91.jpg", seed: 90 },
-  { id: 92, name: "图92", image: "images/level-92.jpg", seed: 91 },
-  { id: 93, name: "图93", image: "images/level-4.jpg", seed: 92 },
-  { id: 94, name: "图94", image: "images/level-94.jpg", seed: 93 },
-  { id: 95, name: "图95", image: "images/level-95.jpg", seed: 94 },
-  { id: 96, name: "图96", image: "images/level-96.jpg", seed: 95 },
-  { id: 97, name: "图97", image: "images/level-97.jpg", seed: 96 },
-  { id: 98, name: "图98", image: "images/level-98.jpg", seed: 97 },
-  { id: 99, name: "图99", image: "images/level-99.jpg", seed: 98 },
-  { id: 100, name: "图100", image: "images/level-100.jpg", seed: 99 },
-  { id: 101, name: "图101", image: "images/level-101.jpg", seed: 100 },
-  { id: 102, name: "图102", image: "images/level-102.jpg", seed: 101 },
-  { id: 103, name: "图103", image: "images/level-103.jpg", seed: 102 },
-  { id: 104, name: "图104", image: "images/level-104.jpg", seed: 103 },
+  { id: 1, name: "花开见佛", image: "images/level-42.jpg", seed: 0 },
+  { id: 2, name: "疑是银河落九天", image: "images/level-78.jpg", seed: 1 },
+  { id: 3, name: "八月秋高风怒号", image: "images/level-15.jpg", seed: 2 },
+  { id: 4, name: "山色空蒙雨亦奇", image: "images/level-93.jpg", seed: 3 },
+  { id: 5, name: "岁月如歌", image: "images/level-60.jpg", seed: 4 },
+  { id: 6, name: "彩云归", image: "images/level-6.jpg", seed: 5 },
+  { id: 7, name: "疏影", image: "images/level-7.jpg", seed: 6 },
+  { id: 8, name: "琉璃色", image: "images/level-8.jpg", seed: 7 },
+  { id: 9, name: "竹外桃花三两枝", image: "images/level-9.jpg", seed: 8 },
+  { id: 10, name: "冬夜读书忘却眠", image: "images/level-10.jpg", seed: 9 },
+  { id: 11, name: "浮生若梦", image: "images/level-11.jpg", seed: 10 },
+  { id: 12, name: "晚风轻拂", image: "images/level-12.jpg", seed: 11 },
+  { id: 13, name: "晨曦", image: "images/level-13.jpg", seed: 12 },
+  { id: 14, name: "低头思故乡情切", image: "images/level-14.jpg", seed: 13 },
+  { id: 15, name: "春江水暖鸭先知", image: "images/level-3.jpg", seed: 14 },
+  { id: 16, name: "明月心", image: "images/level-16.jpg", seed: 15 },
+  { id: 17, name: "忆江南", image: "images/level-17.jpg", seed: 16 },
+  { id: 18, name: "淡妆浓抹总相宜", image: "images/level-18.jpg", seed: 17 },
+  { id: 19, name: "两岸猿声啼不住", image: "images/level-19.jpg", seed: 18 },
+  { id: 20, name: "繁星点点", image: "images/level-20.jpg", seed: 19 },
+  { id: 21, name: "流云", image: "images/level-21.jpg", seed: 20 },
+  { id: 22, name: "日出江花红胜火", image: "images/level-22.jpg", seed: 21 },
+  { id: 23, name: "风满楼", image: "images/level-23.jpg", seed: 22 },
+  { id: 24, name: "千山暮雪", image: "images/level-24.jpg", seed: 23 },
+  { id: 25, name: "此心安处是吾乡", image: "images/level-25.jpg", seed: 24 },
+  { id: 26, name: "江枫渔火对愁眠", image: "images/level-26.jpg", seed: 25 },
+  { id: 28, name: "静待花开", image: "images/level-28.jpg", seed: 27 },
+  { id: 29, name: "星河", image: "images/level-29.jpg", seed: 28 },
+  { id: 30, name: "碧水长", image: "images/level-30.jpg", seed: 29 },
+  { id: 31, name: "烟花三月下扬州", image: "images/level-31.jpg", seed: 30 },
+  { id: 32, name: "五月榴花照眼明", image: "images/level-32.jpg", seed: 31 },
+  { id: 33, name: "二月春风似剪刀", image: "images/level-33.jpg", seed: 32 },
+  { id: 34, name: "竹喧归浣女笑语", image: "images/level-34.jpg", seed: 33 },
+  { id: 36, name: "翡翠湖", image: "images/level-36.jpg", seed: 35 },
+  { id: 37, name: "两岸青山相对出", image: "images/level-37.jpg", seed: 36 },
+  { id: 38, name: "朝露", image: "images/level-38.jpg", seed: 37 },
+  { id: 39, name: "孤帆一片日边来", image: "images/level-39.jpg", seed: 38 },
+  { id: 40, name: "飞流直下三千尺", image: "images/level-40.jpg", seed: 39 },
+  { id: 41, name: "夜半钟声到客船", image: "images/level-41.jpg", seed: 40 },
+  { id: 42, name: "映日荷花别样红", image: "images/level-1.jpg", seed: 41 },
+  { id: 43, name: "姑苏城外寒山寺", image: "images/level-43.jpg", seed: 42 },
+  { id: 44, name: "逆光飞翔", image: "images/level-44.jpg", seed: 43 },
+  { id: 45, name: "六月荷风送香气", image: "images/level-45.jpg", seed: 44 },
+  { id: 46, name: "一树梨花压海棠", image: "images/level-46.jpg", seed: 45 },
+  { id: 47, name: "秋水共长天一色", image: "images/level-47.jpg", seed: 46 },
+  { id: 48, name: "轻舟已过万重山", image: "images/level-48.jpg", seed: 47 },
+  { id: 49, name: "清辉", image: "images/level-49.jpg", seed: 48 },
+  { id: 50, name: "百转千回", image: "images/level-50.jpg", seed: 49 },
+  { id: 51, name: "冬雪皑皑", image: "images/level-51.jpg", seed: 50 },
+  { id: 52, name: "蝶恋花", image: "images/level-52.jpg", seed: 51 },
+  { id: 53, name: "晨星落", image: "images/level-53.jpg", seed: 52 },
+  { id: 54, name: "满目星河", image: "images/level-54.jpg", seed: 53 },
+  { id: 55, name: "云水禅心", image: "images/level-55.jpg", seed: 54 },
+  { id: 56, name: "清泉石上流不息", image: "images/level-56.jpg", seed: 55 },
+  { id: 57, name: "春暖花开", image: "images/level-57.jpg", seed: 56 },
+  { id: 59, name: "一见倾心", image: "images/level-59.jpg", seed: 58 },
+  { id: 60, name: "白鹭洲", image: "images/level-5.jpg", seed: 59 },
+  { id: 61, name: "欲把西湖比西子", image: "images/level-61.jpg", seed: 60 },
+  { id: 62, name: "秋叶静美", image: "images/level-62.jpg", seed: 61 },
+  { id: 63, name: "暗香", image: "images/level-63.jpg", seed: 62 },
+  { id: 64, name: "长安", image: "images/level-64.jpg", seed: 63 },
+  { id: 65, name: "朝辞白帝彩云间", image: "images/level-65.jpg", seed: 64 },
+  { id: 66, name: "燕归巢", image: "images/level-66.jpg", seed: 65 },
+  { id: 67, name: "月影", image: "images/level-67.jpg", seed: 66 },
+  { id: 68, name: "月光如水", image: "images/level-68.jpg", seed: 67 },
+  { id: 69, name: "空山新雨后初晴", image: "images/level-69.jpg", seed: 68 },
+  { id: 70, name: "红尘客", image: "images/level-70.jpg", seed: 69 },
+  { id: 71, name: "王孙自可留山中", image: "images/level-71.jpg", seed: 70 },
+  { id: 72, name: "十里桃花", image: "images/level-72.jpg", seed: 71 },
+  { id: 73, name: "岁月安好", image: "images/level-73.jpg", seed: 72 },
+  { id: 74, name: "千里江陵一日还", image: "images/level-74.jpg", seed: 73 },
+  { id: 75, name: "九月九日忆山东", image: "images/level-75.jpg", seed: 74 },
+  { id: 76, name: "胭脂雪", image: "images/level-76.jpg", seed: 75 },
+  { id: 77, name: "冬雪落满旧时路", image: "images/level-77.jpg", seed: 76 },
+  { id: 78, name: "浮生", image: "images/level-2.jpg", seed: 77 },
+  { id: 79, name: "梦境", image: "images/level-79.jpg", seed: 78 },
+  { id: 80, name: "珊瑚海", image: "images/level-80.jpg", seed: 79 },
+  { id: 81, name: "天气晚来秋意浓", image: "images/level-81.jpg", seed: 80 },
+  { id: 82, name: "唯见长江天际流", image: "images/level-82.jpg", seed: 81 },
+  { id: 83, name: "夜未央", image: "images/level-83.jpg", seed: 82 },
+  { id: 84, name: "余晖", image: "images/level-84.jpg", seed: 83 },
+  { id: 85, name: "接天莲叶无穷碧", image: "images/level-85.jpg", seed: 84 },
+  { id: 86, name: "向阳而生", image: "images/level-86.jpg", seed: 85 },
+  { id: 87, name: "落霞与孤鹜齐飞", image: "images/level-87.jpg", seed: 86 },
+  { id: 88, name: "春来江水绿如蓝", image: "images/level-88.jpg", seed: 87 },
+  { id: 89, name: "人间有味是清欢", image: "images/level-89.jpg", seed: 88 },
+  { id: 90, name: "清风明月本无价", image: "images/level-90.jpg", seed: 89 },
+  { id: 91, name: "四月人间芳菲尽", image: "images/level-91.jpg", seed: 90 },
+  { id: 92, name: "春江花月夜未央", image: "images/level-92.jpg", seed: 91 },
+  { id: 93, name: "十月先开岭上梅", image: "images/level-4.jpg", seed: 92 },
+  { id: 94, name: "咫尺", image: "images/level-94.jpg", seed: 93 },
+  { id: 95, name: "时光微凉", image: "images/level-95.jpg", seed: 94 },
+  { id: 96, name: "绿阴不减来时路", image: "images/level-96.jpg", seed: 95 },
+  { id: 97, name: "疑是地上霜雪白", image: "images/level-97.jpg", seed: 96 },
+  { id: 98, name: "暮色苍茫", image: "images/level-98.jpg", seed: 97 },
+  { id: 99, name: "故里", image: "images/level-99.jpg", seed: 98 },
+  { id: 100, name: "万里晴空", image: "images/level-100.jpg", seed: 99 },
+  { id: 101, name: "霜叶红", image: "images/level-101.jpg", seed: 100 },
+  { id: 102, name: "再别康桥", image: "images/level-102.jpg", seed: 101 },
+  { id: 103, name: "且听风吟", image: "images/level-103.jpg", seed: 102 },
+  { id: 104, name: "青鸟信", image: "images/level-104.jpg", seed: 103 },
 ];
 const findLevelById = (id) => LEVELS.find(l => l.id === id);
 const UNLOCK_KEY = "puzzle_unlock_v4";
@@ -1368,25 +1373,46 @@ const Game = {
   },
   bindBoardGestures() {
     let pinchDist = 0, lastScale = 1, panStart = null;
+    let pinchMid = null, pinchOffStart = null;
     this.boardArea.addEventListener("pointerdown", (e) => {
-      if (!e.isPrimary && pinchDist === 0) {
-        const pts = this._ptrs();
-        if (pts.length === 2) { pinchDist = Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y); lastScale = this.boardScale; }
-      } else if (e.isPrimary && pinchDist === 0) {
+      const pts = this._ptrs();
+      if (pts.length === 2) {
+        pinchDist = Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
+        pinchMid = { x: (pts[0].x+pts[1].x)/2, y: (pts[0].y+pts[1].y)/2 };
+        pinchOffStart = { ox: this.boardOffsetX, oy: this.boardOffsetY };
+        lastScale = this.boardScale;
+        panStart = null;
+      } else if (pts.length === 1 && pinchDist === 0) {
         if (e.target === this.boardArea || e.target === this.board) {
           panStart = { x: e.clientX, y: e.clientY, ox: this.boardOffsetX, oy: this.boardOffsetY };
         }
       }
     });
     this.boardArea.addEventListener("pointermove", (e) => {
-      if (pinchDist > 0) {
-        const pts = this._ptrs();
-        if (pts.length === 2) {
-          const d = Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
-          this.boardScale = clamp(lastScale * (d / pinchDist), 0.3, 3);
-          this.applyBoardTransform();
-        }
-      } else if (panStart && e.isPrimary) {
+      const pts = this._ptrs();
+      if (pinchDist > 0 && pts.length === 2) {
+        const d = Math.hypot(pts[1].x-pts[0].x, pts[1].y-pts[0].y);
+        const newScale = clamp(lastScale * (d / pinchDist), 0.3, 4);
+        const newMid = { x: (pts[0].x+pts[1].x)/2, y: (pts[0].y+pts[1].y)/2 };
+        // 以双指中点为中心缩放 + 平移
+        const dx = newMid.x - pinchMid.x;
+        const dy = newMid.y - pinchMid.y;
+        this.boardOffsetX = pinchOffStart.ox + dx;
+        this.boardOffsetY = pinchOffStart.oy + dy;
+        // 缩放时校正：保持中点对应的内容位置不变
+        const scaleDelta = newScale / this.boardScale;
+        const rect = this.boardArea.getBoundingClientRect();
+        const cx = pinchMid.x - rect.left;
+        const cy = pinchMid.y - rect.top;
+        // 内容点相对于板原点的坐标（缩放前）
+        const contentX = (cx - this.boardOffsetX) / this.boardScale;
+        const contentY = (cy - this.boardOffsetY) / this.boardScale;
+        this.boardScale = newScale;
+        // 缩放后使中点仍对准同一内容点
+        this.boardOffsetX = cx - contentX * newScale + dx;
+        this.boardOffsetY = cy - contentY * newScale + dy;
+        this.applyBoardTransform();
+      } else if (panStart && pts.length === 1 && e.isPrimary) {
         this.boardOffsetX = panStart.ox + e.clientX - panStart.x;
         this.boardOffsetY = panStart.oy + e.clientY - panStart.y;
         this.applyBoardTransform();
@@ -1394,7 +1420,7 @@ const Game = {
     });
     const end = (e) => {
       const pts = this._ptrs();
-      if (pts.length < 2) pinchDist = 0;
+      if (pts.length < 2) { pinchDist = 0; pinchMid = null; pinchOffStart = null; }
       if (pts.length === 0) { pinchDist = 0; panStart = null; }
       if (e.isPrimary) panStart = null;
     };
@@ -1403,7 +1429,17 @@ const Game = {
     this.boardArea.addEventListener("pointerleave", end);
     this.boardArea.addEventListener("wheel", (e) => {
       e.preventDefault();
-      this.boardScale = clamp(this.boardScale * (e.deltaY > 0 ? 0.9 : 1.1), 0.3, 3);
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = clamp(this.boardScale * delta, 0.3, 4);
+      // 以鼠标位置为中心缩放
+      const rect = this.boardArea.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+      const contentX = (cx - this.boardOffsetX) / this.boardScale;
+      const contentY = (cy - this.boardOffsetY) / this.boardScale;
+      this.boardScale = newScale;
+      this.boardOffsetX = cx - contentX * newScale;
+      this.boardOffsetY = cy - contentY * newScale;
       this.applyBoardTransform();
     }, { passive: false });
   },
@@ -1569,7 +1605,7 @@ const LevelsPage = {
       }
       meta.appendChild(dots);
       const countText = document.createElement("span");
-      countText.textContent = clearedN > 0 ? `${clearedN}/3 模式` : "未通关";
+      countText.textContent = clearedN > 0 ? `${clearedN}/${MODES.length} 模式` : "未通关";
       meta.appendChild(countText);
       info.appendChild(meta);
       card.appendChild(info);
@@ -1599,7 +1635,7 @@ const ModePage = {
     if (!lv) { Router.go("/levels"); return; }
     $("modeLevelName").textContent = `${lv.name} · 选择模式`;
     const clearedN = getClearedCount(lv.id);
-    $("modeSubText").textContent = clearedN > 0 ? `已通关 ${clearedN}/3 模式` : "选择一个模式开始挑战";
+    $("modeSubText").textContent = clearedN > 0 ? `已通关 ${clearedN}/${MODES.length} 模式` : "选择一个模式开始挑战";
     const grid = $("modeGrid");
     grid.innerHTML = "";
     for (const m of MODES) {
@@ -1720,7 +1756,7 @@ const Gallery = {
           }
         }
         const countEl = document.createElement("span");
-        countEl.textContent = `${clearedN}/3`;
+        countEl.textContent = `${clearedN}/${MODES.length}`;
         meta.appendChild(countEl);
       } else if (unlocked) {
         const t = document.createElement("span");
