@@ -303,12 +303,19 @@
   .level-card:active { transform: scale(0.98); }
   .level-card.locked { opacity: 0.55; cursor: not-allowed; }
   .level-thumb {
-    width: 100%; aspect-ratio: 4/3;
+    width: 100%; padding-top: 75%;
     background: var(--surface-muted);
-    display: flex; align-items: center; justify-content: center;
     overflow: hidden; position: relative;
   }
-  .level-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .level-thumb img,
+  .level-thumb .lock-icon-wrap {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+  .level-thumb img { object-fit: cover; display: block; }
+  .level-thumb .lock-icon-wrap {
+    display: flex; align-items: center; justify-content: center;
+  }
   .level-thumb .lock-icon {
     width: 40px; height: 40px; color: var(--text-muted); opacity: 0.4;
   }
@@ -1480,10 +1487,13 @@ const LevelsPage = {
         img.alt = lv.name;
         thumb.appendChild(img);
       } else {
+        const wrap = document.createElement("div");
+        wrap.className = "lock-icon-wrap";
         const lock = document.createElement("div");
         lock.className = "lock-icon";
         lock.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 2C9.79 2 8 3.79 8 6v2H6v14h12V8h-2V6c0-2.21-1.79-4-4-4zm-2 6V6c0-1.1.9-2 2-2s2 .9 2 2v2h-4z"/></svg>';
-        thumb.appendChild(lock);
+        wrap.appendChild(lock);
+        thumb.appendChild(wrap);
       }
       const num = document.createElement("div");
       num.className = "level-badge-num";
