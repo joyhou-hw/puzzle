@@ -449,7 +449,7 @@
   <main class="view view-levels" id="viewLevels">
     <div class="levels-header">
       <h2>选择关卡</h2>
-      <div class="levels-progress">已通关 <span id="levelsClearedCount">0</span> / 6 关</div>
+      <div class="levels-progress">已通关 <span id="levelsClearedCount">0</span> / <span id="levelsTotalCount">0</span> 关</div>
     </div>
     <div class="welcome-banner" id="welcomeBanner">欢迎老婆大人来玩游戏，祝老婆大人玩的开心！</div>
     <div class="levels-grid" id="levelsGrid"></div>
@@ -482,7 +482,7 @@
   <main class="view view-gallery" id="viewGallery">
     <div class="gallery-header">
       <h2>图库</h2>
-      <div class="gallery-progress">已解锁 <span id="galleryCount">0</span> / 6 关</div>
+      <div class="gallery-progress">已解锁 <span id="galleryCount">0</span> / <span id="galleryTotalCount">0</span> 关</div>
     </div>
     <div class="gallery-grid" id="galleryGrid"></div>
   </main>
@@ -605,6 +605,101 @@ const LEVELS = [
   { id: 4, name: "图四", image: "images/level-4.jpg", seed: 3 },
   { id: 5, name: "图五", image: "images/level-5.jpg", seed: 4 },
   { id: 6, name: "图六", image: "images/level-6.jpg", seed: 5 },
+  { id: 7, name: "图七", image: "images/level-7.jpg", seed: 6 },
+  { id: 8, name: "图八", image: "images/level-8.jpg", seed: 7 },
+  { id: 9, name: "图九", image: "images/level-9.jpg", seed: 8 },
+  { id: 10, name: "图10", image: "images/level-10.jpg", seed: 9 },
+  { id: 11, name: "图11", image: "images/level-11.jpg", seed: 10 },
+  { id: 12, name: "图12", image: "images/level-12.jpg", seed: 11 },
+  { id: 13, name: "图13", image: "images/level-13.jpg", seed: 12 },
+  { id: 14, name: "图14", image: "images/level-14.jpg", seed: 13 },
+  { id: 15, name: "图15", image: "images/level-15.jpg", seed: 14 },
+  { id: 16, name: "图16", image: "images/level-16.jpg", seed: 15 },
+  { id: 17, name: "图17", image: "images/level-17.jpg", seed: 16 },
+  { id: 18, name: "图18", image: "images/level-18.jpg", seed: 17 },
+  { id: 19, name: "图19", image: "images/level-19.jpg", seed: 18 },
+  { id: 20, name: "图20", image: "images/level-20.jpg", seed: 19 },
+  { id: 21, name: "图21", image: "images/level-21.jpg", seed: 20 },
+  { id: 22, name: "图22", image: "images/level-22.jpg", seed: 21 },
+  { id: 23, name: "图23", image: "images/level-23.jpg", seed: 22 },
+  { id: 24, name: "图24", image: "images/level-24.jpg", seed: 23 },
+  { id: 25, name: "图25", image: "images/level-25.jpg", seed: 24 },
+  { id: 26, name: "图26", image: "images/level-26.jpg", seed: 25 },
+  { id: 28, name: "图28", image: "images/level-28.jpg", seed: 27 },
+  { id: 29, name: "图29", image: "images/level-29.jpg", seed: 28 },
+  { id: 30, name: "图30", image: "images/level-30.jpg", seed: 29 },
+  { id: 31, name: "图31", image: "images/level-31.jpg", seed: 30 },
+  { id: 32, name: "图32", image: "images/level-32.jpg", seed: 31 },
+  { id: 33, name: "图33", image: "images/level-33.jpg", seed: 32 },
+  { id: 34, name: "图34", image: "images/level-34.jpg", seed: 33 },
+  { id: 36, name: "图36", image: "images/level-36.jpg", seed: 35 },
+  { id: 37, name: "图37", image: "images/level-37.jpg", seed: 36 },
+  { id: 38, name: "图38", image: "images/level-38.jpg", seed: 37 },
+  { id: 39, name: "图39", image: "images/level-39.jpg", seed: 38 },
+  { id: 40, name: "图40", image: "images/level-40.jpg", seed: 39 },
+  { id: 41, name: "图41", image: "images/level-41.jpg", seed: 40 },
+  { id: 42, name: "图42", image: "images/level-42.jpg", seed: 41 },
+  { id: 43, name: "图43", image: "images/level-43.jpg", seed: 42 },
+  { id: 44, name: "图44", image: "images/level-44.jpg", seed: 43 },
+  { id: 45, name: "图45", image: "images/level-45.jpg", seed: 44 },
+  { id: 46, name: "图46", image: "images/level-46.jpg", seed: 45 },
+  { id: 47, name: "图47", image: "images/level-47.jpg", seed: 46 },
+  { id: 48, name: "图48", image: "images/level-48.jpg", seed: 47 },
+  { id: 49, name: "图49", image: "images/level-49.jpg", seed: 48 },
+  { id: 50, name: "图50", image: "images/level-50.jpg", seed: 49 },
+  { id: 51, name: "图51", image: "images/level-51.jpg", seed: 50 },
+  { id: 52, name: "图52", image: "images/level-52.jpg", seed: 51 },
+  { id: 53, name: "图53", image: "images/level-53.jpg", seed: 52 },
+  { id: 54, name: "图54", image: "images/level-54.jpg", seed: 53 },
+  { id: 55, name: "图55", image: "images/level-55.jpg", seed: 54 },
+  { id: 56, name: "图56", image: "images/level-56.jpg", seed: 55 },
+  { id: 57, name: "图57", image: "images/level-57.jpg", seed: 56 },
+  { id: 59, name: "图59", image: "images/level-59.jpg", seed: 58 },
+  { id: 60, name: "图60", image: "images/level-60.jpg", seed: 59 },
+  { id: 61, name: "图61", image: "images/level-61.jpg", seed: 60 },
+  { id: 62, name: "图62", image: "images/level-62.jpg", seed: 61 },
+  { id: 63, name: "图63", image: "images/level-63.jpg", seed: 62 },
+  { id: 64, name: "图64", image: "images/level-64.jpg", seed: 63 },
+  { id: 65, name: "图65", image: "images/level-65.jpg", seed: 64 },
+  { id: 66, name: "图66", image: "images/level-66.jpg", seed: 65 },
+  { id: 67, name: "图67", image: "images/level-67.jpg", seed: 66 },
+  { id: 68, name: "图68", image: "images/level-68.jpg", seed: 67 },
+  { id: 69, name: "图69", image: "images/level-69.jpg", seed: 68 },
+  { id: 70, name: "图70", image: "images/level-70.jpg", seed: 69 },
+  { id: 71, name: "图71", image: "images/level-71.jpg", seed: 70 },
+  { id: 72, name: "图72", image: "images/level-72.jpg", seed: 71 },
+  { id: 73, name: "图73", image: "images/level-73.jpg", seed: 72 },
+  { id: 74, name: "图74", image: "images/level-74.jpg", seed: 73 },
+  { id: 75, name: "图75", image: "images/level-75.jpg", seed: 74 },
+  { id: 76, name: "图76", image: "images/level-76.jpg", seed: 75 },
+  { id: 77, name: "图77", image: "images/level-77.jpg", seed: 76 },
+  { id: 78, name: "图78", image: "images/level-78.jpg", seed: 77 },
+  { id: 79, name: "图79", image: "images/level-79.jpg", seed: 78 },
+  { id: 80, name: "图80", image: "images/level-80.jpg", seed: 79 },
+  { id: 81, name: "图81", image: "images/level-81.jpg", seed: 80 },
+  { id: 82, name: "图82", image: "images/level-82.jpg", seed: 81 },
+  { id: 83, name: "图83", image: "images/level-83.jpg", seed: 82 },
+  { id: 84, name: "图84", image: "images/level-84.jpg", seed: 83 },
+  { id: 85, name: "图85", image: "images/level-85.jpg", seed: 84 },
+  { id: 86, name: "图86", image: "images/level-86.jpg", seed: 85 },
+  { id: 87, name: "图87", image: "images/level-87.jpg", seed: 86 },
+  { id: 88, name: "图88", image: "images/level-88.jpg", seed: 87 },
+  { id: 89, name: "图89", image: "images/level-89.jpg", seed: 88 },
+  { id: 90, name: "图90", image: "images/level-90.jpg", seed: 89 },
+  { id: 91, name: "图91", image: "images/level-91.jpg", seed: 90 },
+  { id: 92, name: "图92", image: "images/level-92.jpg", seed: 91 },
+  { id: 93, name: "图93", image: "images/level-93.jpg", seed: 92 },
+  { id: 94, name: "图94", image: "images/level-94.jpg", seed: 93 },
+  { id: 95, name: "图95", image: "images/level-95.jpg", seed: 94 },
+  { id: 96, name: "图96", image: "images/level-96.jpg", seed: 95 },
+  { id: 97, name: "图97", image: "images/level-97.jpg", seed: 96 },
+  { id: 98, name: "图98", image: "images/level-98.jpg", seed: 97 },
+  { id: 99, name: "图99", image: "images/level-99.jpg", seed: 98 },
+  { id: 100, name: "图100", image: "images/level-100.jpg", seed: 99 },
+  { id: 101, name: "图101", image: "images/level-101.jpg", seed: 100 },
+  { id: 102, name: "图102", image: "images/level-102.jpg", seed: 101 },
+  { id: 103, name: "图103", image: "images/level-103.jpg", seed: 102 },
+  { id: 104, name: "图104", image: "images/level-104.jpg", seed: 103 },
 ];
 const findLevelById = (id) => LEVELS.find(l => l.id === id);
 const UNLOCK_KEY = "puzzle_unlock_v4";
@@ -1369,6 +1464,7 @@ const LevelsPage = {
   render() {
     const cleared = LEVELS.filter(lv => getClearedCount(lv.id) > 0).length;
     $("levelsClearedCount").textContent = cleared;
+    $("levelsTotalCount").textContent = LEVELS.length;
     const grid = $("levelsGrid");
     grid.innerHTML = "";
     for (const lv of LEVELS) {
@@ -1487,6 +1583,7 @@ const Gallery = {
   render() {
     const unlockedCount = LEVELS.filter(lv => isUnlocked(lv.id)).length;
     $("galleryCount").textContent = unlockedCount;
+    $("galleryTotalCount").textContent = LEVELS.length;
     const grid = $("galleryGrid");
     grid.innerHTML = "";
     for (const lv of LEVELS) {
