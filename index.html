@@ -508,18 +508,26 @@ function generateDefaultImage(seed) {
 
 // ---------- 难度与关卡定义（v3 新增） ----------
 // 每档 3 关，共 9 关；关卡 ID = `${diff}_${n}`
+// 关卡图片：9 关复用 6 张图（nightmare 复用 easy/hard 的图，靠难度差异区分）
 const DIFFICULTIES = {
   easy:      { hexW: 92, groupSize: 12, preview: true,  label: "简单",   cols: [7, 6, 7], rows: [6, 5, 5] },  // 约 42/30/35 块
   hard:      { hexW: 64, groupSize: 17, preview: true,  label: "困难",   cols: [9, 10, 10], rows: [8, 7, 8] },  // 约 72/70/80 块
   nightmare: { hexW: 64, groupSize: 17, preview: false, label: "噩梦",   cols: [9, 10, 10], rows: [8, 7, 8] },  // 同困难块数，无淡原图
 };
 const LEVEL_NAMES = ["晨光", "暮色", "星河"];
+// 每关对应的图片（images/ 目录下）；9 关映射到 6 张图，噩梦难度复用前 3 张
+const LEVEL_IMAGES = {
+  easy_1: "images/level-1.jpg", easy_2: "images/level-2.jpg", easy_3: "images/level-3.jpg",
+  hard_1: "images/level-4.jpg",  hard_2: "images/level-5.jpg", hard_3: "images/level-6.jpg",
+  nightmare_1: "images/level-1.jpg", nightmare_2: "images/level-2.jpg", nightmare_3: "images/level-3.jpg",
+};
 const LEVELS = [];
 ["easy", "hard", "nightmare"].forEach(diff => {
   const cfg = DIFFICULTIES[diff];
   for (let i = 0; i < 3; i++) {
+    const id = `${diff}_${i + 1}`;
     LEVELS.push({
-      id: `${diff}_${i + 1}`,
+      id,
       name: LEVEL_NAMES[i],
       difficulty: diff,
       cols: cfg.cols[i],
@@ -528,6 +536,7 @@ const LEVELS = [];
       groupSize: cfg.groupSize,
       preview: cfg.preview,
       seed: i,
+      image: LEVEL_IMAGES[id],  // 关卡图片路径（v3 新增，优先于程序生成）
     });
   }
 });
@@ -691,7 +700,7 @@ const Game = {
     return cv;
   },
 
-  // ====== 关卡加载（v2 + 难度/preview 扩展） ======
+  // ====== 关卡加载（v2 + 难度/preview 扩展 + v3 图片资源接入） ======
   loadLevel(diff, idx, keepUserImage = false) {
     const levelsInDiff = findLevelsByDiff(diff);
     this.currentDifficulty = diff;
@@ -705,13 +714,44 @@ const Game = {
     this.totalW = Math.round(sz.w);
     this.totalH = Math.round(sz.h);
 
-    // 图片源：优先用户上传，否则按 seed 程序生成
-    let src;
-    if (keepUserImage && this.userImage) src = this.userImage;
-    else { src = generateDefaultImage(this.level.seed); this.userImage = null; }
-    this.imgCanvas = this.buildImageCanvas(src);
-    this.imgDataURL = this.imgCanvas.toDataURL("image/jpeg", 0.85);
+    // 图片源优先级：用户上传 > 关卡图片(images/) > 程序生成
+    // 异步加载图片后继续 buildImageCanvas + 构造碎片
+    const finalize = (src, srcLabel) => {
+      this.imgCanvas = this.buildImageCanvas(src);
+      this.imgDataURL = this.imgCanvas.toDataURL("image/jpeg", 0.85);
+      this.imgSrcLabel = srcLabel;  // 记录图源类型（用于成就页显示原图）
+      this.buildPieces();
+      this.layoutBoard();
+      this.dealNextGroup(true);
+      this.updateProgress();
+      ProgressManager.updateSubTitle();
+      $("loading").classList.remove("show");
+    };
 
+    if (keepUserImage && this.userImage) {
+      // 用户上传图优先
+      finalize(this.userImage, "upload");
+      return;
+    }
+    this.userImage = null;
+
+    // 尝试加载关卡图片；失败回退程序生成
+    if (this.level.image) {
+      $("loading").classList.add("show");
+      const img = new Image();
+      img.onload = () => finalize(img, this.level.image);
+      img.onerror = () => {
+        console.warn(`[loadLevel] 关卡图片 ${this.level.image} 加载失败，回退程序生成`);
+        finalize(generateDefaultImage(this.level.seed), "generated");
+      };
+      img.src = this.level.image;
+    } else {
+      finalize(generateDefaultImage(this.level.seed), "generated");
+    }
+  },
+
+  // 构造碎片 + 清空旧状态（从 loadLevel 抽出，供异步加载复用）
+  buildPieces() {
     // 清空旧状态
     this.pieces = {}; this.pieceList = [];
     this.currentGroup = []; this.groupIndex = 0;
@@ -758,9 +798,6 @@ const Game = {
     // SVG 槽位虚线六边形
     this.renderSlots();
 
-    this.layoutBoard();
-    this.dealNextGroup(true);
-    this.updateProgress();
     this.startTimer();
 
     // 写入 puzzle_current_v3（v3 新增）
@@ -769,9 +806,6 @@ const Game = {
         levelId: this.level.id, difficulty: this.currentDifficulty,
       }));
     } catch (e) {}
-
-    // 同步存档页副标题
-    ProgressManager.updateSubTitle();
   },
 
   // 噩梦模式：构建 SVG 原生 mask 挖空六边形网格区域，只显锯齿边缘。
@@ -1070,9 +1104,18 @@ const Game = {
     const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
     $("statTime").textContent = fmtTime(elapsed);
     $("statMoves").textContent = this.moves;
-    $("revealImg").src = this.imgDataURL;
+    // 通关 reveal 优先显示原图路径（线上图片），非图片源用 dataURL
+    const fullSrc = (this.imgSrcLabel === "upload" || this.imgSrcLabel === "generated") ? this.imgDataURL : this.level.image;
+    if (fullSrc && fullSrc.startsWith("images/")) {
+      const img = new Image();
+      img.onload = () => { $("revealImg").src = img.src; };
+      img.onerror = () => { $("revealImg").src = this.imgDataURL; };
+      img.src = fullSrc;
+    } else {
+      $("revealImg").src = this.imgDataURL;
+    }
     $("revealTitle").textContent = this.level.name;
-    $("revealSubText").textContent = `${DIFFICULTIES[this.currentDifficulty].label} · ${this.level.name}`;
+    $("revealSubText").textContent = `${DIFFICULTIES[this.currentDifficulty].label} · ${this.level.name} · 用时 ${fmtTime(elapsed)} · ${this.moves} 步`;
     $("winSubText").textContent = `${DIFFICULTIES[this.currentDifficulty].label} · 已收藏到图库`;
     this.saveToGallery();
     localStorage.removeItem(`puzzle_progress_${this.level.id}`);
@@ -1131,6 +1174,9 @@ const Game = {
         levelId: this.level.id, name: this.level.name,
         difficulty: this.currentDifficulty,
         thumbnail: tc.toDataURL("image/jpeg", 0.75),
+        // 原图来源：关卡图片路径（线上可重新加载原图），上传/程序生成则用 dataURL
+        fullImage: (this.imgSrcLabel === "upload" || this.imgSrcLabel === "generated") ? this.imgDataURL : this.level.image,
+        imageType: this.imgSrcLabel,  // upload/generated/images/level-x.jpg
         elapsed, moves: this.moves, completedAt: Date.now(),
       };
       // 同关覆盖（保留最新通关记录）
@@ -1311,19 +1357,44 @@ const Gallery = {
       badge.className = "diff-badge " + lv.difficulty;
       badge.textContent = DIFFICULTIES[lv.difficulty].label;
       meta.appendChild(badge);
-      const time = document.createElement("span");
-      time.textContent = rec ? fmtTime(rec.elapsed) : "—";
-      meta.appendChild(time);
+      if (rec) {
+        // 已通关：显示用时 + 步数
+        const time = document.createElement("span");
+        time.textContent = fmtTime(rec.elapsed);
+        meta.appendChild(time);
+        const movesEl = document.createElement("span");
+        movesEl.textContent = `${rec.moves}步`;
+        meta.appendChild(movesEl);
+      } else {
+        const time = document.createElement("span");
+        time.textContent = "—";
+        meta.appendChild(time);
+      }
       info.appendChild(meta);
       card.appendChild(info);
       grid.appendChild(card);
     }
   },
-  // 复用 v2 reveal 浮层放大显示完整图
+  // 复用 v2 reveal 浮层放大显示完整图（v3 优先加载原图路径，回退缩略图）
   showFull(rec, lv) {
-    $("revealImg").src = rec.thumbnail;
+    // 通关信息：难度 · 用时 · 步数 · 通关时间
+    const elapsed = fmtTime(rec.elapsed);
+    const moves = rec.moves;
+    const completedAt = new Date(rec.completedAt);
+    const ts = `${completedAt.getFullYear()}-${(completedAt.getMonth()+1).toString().padStart(2,'0')}-${completedAt.getDate().toString().padStart(2,'0')}`;
     $("revealTitle").textContent = lv.name;
-    $("revealSubText").textContent = `${DIFFICULTIES[lv.difficulty].label} · 用时 ${fmtTime(rec.elapsed)} · ${rec.moves} 步`;
+    $("revealSubText").textContent = `${DIFFICULTIES[lv.difficulty].label} · 用时 ${elapsed} · ${moves} 步 · ${ts}`;
+    // 优先 fullImage（原图路径/dataURL），回退 thumbnail（缩略图 dataURL）
+    const src = rec.fullImage || rec.thumbnail;
+    if (src && src.startsWith("images/")) {
+      // 关卡图片：异步加载，加载失败回退缩略图
+      const img = new Image();
+      img.onload = () => { $("revealImg").src = img.src; };
+      img.onerror = () => { $("revealImg").src = rec.thumbnail; };
+      img.src = src;
+    } else {
+      $("revealImg").src = src;
+    }
     $("reveal").classList.add("show");
     // 隐藏可能存在的 winModal
     $("winModal").classList.remove("show");
