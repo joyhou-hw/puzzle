@@ -163,14 +163,44 @@
   .pool-track {
     display: flex; flex-wrap: wrap; gap: 6px;
     overflow-y: auto; overflow-x: hidden;
-    padding: 4px 2px 6px; scrollbar-width: thin;
+    padding: 4px 6px 6px 2px; scrollbar-width: thin;
     -webkit-overflow-scrolling: touch;
     max-height: calc(var(--pool-piece-h, 50px) * 2 + 30px);
     transition: max-height 0.25s ease;
+    flex: 1 1 auto;
   }
   .pool-track.expanded { max-height: 60vh; }
-  .pool-track::-webkit-scrollbar { width: 6px; }
-  .pool-track::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .pool-track::-webkit-scrollbar { width: 8px; -webkit-appearance: none; }
+  .pool-track::-webkit-scrollbar-track { background: var(--surface-muted); border-radius: 4px; }
+  .pool-track::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+  .pool-track::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+  .pool-track { scrollbar-width: auto; scrollbar-color: var(--text-muted) var(--surface-muted); }
+  /* 自定义滚动滑块容器 */
+  .pool-scroll-wrap { display: flex; flex: 1 1 auto; min-height: 0; gap: 4px; }
+  .pool-scroll-bar {
+    flex: 0 0 24px; display: flex; flex-direction: column;
+    align-items: center; padding: 2px 0;
+  }
+  .pool-scroll-btn {
+    width: 24px; height: 24px; border: 1px solid var(--border);
+    border-radius: var(--radius); background: var(--surface);
+    color: var(--text-secondary); cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; line-height: 1;
+  }
+  .pool-scroll-btn:active { background: var(--surface-muted); }
+  .pool-scroll-btn:disabled { opacity: 0.3; cursor: default; }
+  .pool-scroll-slider {
+    flex: 1 1 auto; width: 8px; min-height: 20px;
+    background: var(--surface-muted); border-radius: 4px;
+    position: relative; margin: 4px 0;
+  }
+  .pool-scroll-thumb {
+    position: absolute; left: 0; width: 100%;
+    background: var(--text-muted); border-radius: 4px;
+    cursor: pointer; transition: background 0.15s;
+  }
+  .pool-scroll-thumb:hover { background: var(--text-secondary); }
   .pool-piece {
     flex: 0 0 auto;
     background-repeat: no-repeat;
@@ -512,7 +542,16 @@
         <span class="pool-title" id="poolTitle">碎片池</span>
         <button class="pool-expand-btn" id="poolExpandBtn">展开</button>
       </div>
-      <div class="pool-track" id="poolTrack"></div>
+      <div class="pool-scroll-wrap">
+        <div class="pool-track" id="poolTrack"></div>
+        <div class="pool-scroll-bar">
+          <button class="pool-scroll-btn" id="poolScrollUp">▲</button>
+          <div class="pool-scroll-slider" id="poolScrollSlider">
+            <div class="pool-scroll-thumb" id="poolScrollThumb"></div>
+          </div>
+          <button class="pool-scroll-btn" id="poolScrollDown">▼</button>
+        </div>
+      </div>
     </footer>
   </main>
   <main class="view view-gallery" id="viewGallery">
@@ -849,6 +888,50 @@ const Game = {
         track.classList.add("expanded");
         btn.textContent = "收起";
       }
+      setTimeout(() => this.updatePoolScrollBar(), 300);
+    });
+    // 自定义滚动条
+    this.poolScrollBar = $("poolScrollSlider");
+    this.poolScrollThumb = $("poolScrollThumb");
+    this.poolScrollUp = $("poolScrollUp");
+    this.poolScrollDown = $("poolScrollDown");
+    $("poolScrollUp").addEventListener("click", () => {
+      this.poolTrack.scrollBy({ top: -this.poolTrack.clientHeight * 0.3, behavior: "smooth" });
+    });
+    $("poolScrollDown").addEventListener("click", () => {
+      this.poolTrack.scrollBy({ top: this.poolTrack.clientHeight * 0.3, behavior: "smooth" });
+    });
+    this.poolTrack.addEventListener("scroll", () => this.updatePoolScrollBar());
+    // 滑块拖拽
+    let thumbDrag = null;
+    this.poolScrollThumb.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      thumbDrag = { y: e.clientY, scroll: this.poolTrack.scrollTop };
+      try { this.poolScrollThumb.setPointerCapture(e.pointerId); } catch(_) {}
+    });
+    this.poolScrollThumb.addEventListener("pointermove", (e) => {
+      if (!thumbDrag) return;
+      const sliderRect = this.poolScrollBar.getBoundingClientRect();
+      const dy = e.clientY - thumbDrag.y;
+      const maxScroll = this.poolTrack.scrollHeight - this.poolTrack.clientHeight;
+      const ratio = dy / (sliderRect.height - this.poolScrollThumb.offsetHeight);
+      this.poolTrack.scrollTop = thumbDrag.scroll + ratio * maxScroll;
+    });
+    const thumbEnd = (e) => {
+      thumbDrag = null;
+      try { this.poolScrollThumb.releasePointerCapture(e.pointerId); } catch(_) {}
+    };
+    this.poolScrollThumb.addEventListener("pointerup", thumbEnd);
+    this.poolScrollThumb.addEventListener("pointercancel", thumbEnd);
+    // 点击滑块轨道跳转
+    this.poolScrollBar.addEventListener("click", (e) => {
+      if (e.target === this.poolScrollThumb) return;
+      const sliderRect = this.poolScrollBar.getBoundingClientRect();
+      const clickY = e.clientY - sliderRect.top;
+      const thumbH = this.poolScrollThumb.offsetHeight;
+      const ratio = clickY / (sliderRect.height - thumbH);
+      const maxScroll = this.poolTrack.scrollHeight - this.poolTrack.clientHeight;
+      this.poolTrack.scrollTo({ top: ratio * maxScroll, behavior: "smooth" });
     });
     $("nextLevelBtn").addEventListener("click", () => this.nextLevel());
     $("replayBtn").addEventListener("click", () => { $("winModal").classList.remove("show"); $("reveal").classList.add("show"); });
@@ -1170,6 +1253,33 @@ const Game = {
       this.bindDrag(el, p, "pool");
       this.poolTrack.appendChild(el);
     }
+    this.updatePoolScrollBar();
+  },
+  updatePoolScrollBar() {
+    const track = this.poolTrack;
+    const slider = this.poolScrollBar;
+    const thumb = this.poolScrollThumb;
+    const up = this.poolScrollUp;
+    const down = this.poolScrollDown;
+    if (!slider || !thumb) return;
+    const maxScroll = track.scrollHeight - track.clientHeight;
+    if (maxScroll <= 0) {
+      // 不需要滚动
+      thumb.style.display = "none";
+      slider.style.opacity = "0.3";
+      up.disabled = true;
+      down.disabled = true;
+      return;
+    }
+    thumb.style.display = "";
+    slider.style.opacity = "1";
+    up.disabled = false;
+    down.disabled = false;
+    const sliderH = slider.clientHeight;
+    const thumbH = Math.max(30, Math.min(sliderH, (track.clientHeight / track.scrollHeight) * sliderH));
+    thumb.style.height = thumbH + "px";
+    const ratio = track.scrollTop / maxScroll;
+    thumb.style.top = (ratio * (sliderH - thumbH)) + "px";
   },
   bindDrag(el, piece, source) {
     let dragging = false, startX = 0, startY = 0, originRect = null, ghostEl = null, pointerId = null;
@@ -1410,7 +1520,7 @@ const Game = {
     return true;
   },
   bindBoardGestures() {
-    // 用 touch 事件处理双指缩放/平移，避免与拼图块 pointer 拖拽冲突
+    // 仅支持双指缩放/平移，不支持单指拖拽（避免误触）
     let touchState = null;
     this.boardArea.addEventListener("touchstart", (e) => {
       if (e.touches.length === 2) {
@@ -1424,52 +1534,30 @@ const Game = {
           offX: this.boardOffsetX,
           offY: this.boardOffsetY,
         };
-      } else if (e.touches.length === 1) {
-        // 单指在板子空白区域平移（不拖拽拼图块时）
-        const t = e.touches[0];
-        if (e.target === this.boardArea || e.target === this.board) {
-          touchState = {
-            pan: true,
-            startX: t.clientX,
-            startY: t.clientY,
-            offX: this.boardOffsetX,
-            offY: this.boardOffsetY,
-          };
-        }
       }
     }, { passive: true });
     this.boardArea.addEventListener("touchmove", (e) => {
-      if (!touchState) return;
-      if (e.touches.length === 2 && !touchState.pan) {
-        e.preventDefault();
-        const t0 = e.touches[0], t1 = e.touches[1];
-        const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-        const newScale = clamp(touchState.scale * (dist / touchState.dist), 0.3, 4);
-        const newMidX = (t0.clientX + t1.clientX) / 2;
-        const newMidY = (t0.clientY + t1.clientY) / 2;
-        const dx = newMidX - touchState.midX;
-        const dy = newMidY - touchState.midY;
-        const rect = this.boardArea.getBoundingClientRect();
-        const cx = touchState.midX - rect.left;
-        const cy = touchState.midY - rect.top;
-        // 缩放前中点对应的内容坐标
-        const contentX = (cx - touchState.offX) / touchState.scale;
-        const contentY = (cy - touchState.offY) / touchState.scale;
-        this.boardScale = newScale;
-        // 缩放后保持中点对准同一内容点，同时跟随平移
-        this.boardOffsetX = cx - contentX * newScale + dx;
-        this.boardOffsetY = cy - contentY * newScale + dy;
-        this.applyBoardTransform();
-      } else if (touchState.pan && e.touches.length === 1) {
-        const t = e.touches[0];
-        this.boardOffsetX = touchState.offX + t.clientX - touchState.startX;
-        this.boardOffsetY = touchState.offY + t.clientY - touchState.startY;
-        this.applyBoardTransform();
-      }
+      if (!touchState || e.touches.length !== 2) return;
+      e.preventDefault();
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      const newScale = clamp(touchState.scale * (dist / touchState.dist), 0.3, 4);
+      const newMidX = (t0.clientX + t1.clientX) / 2;
+      const newMidY = (t0.clientY + t1.clientY) / 2;
+      const dx = newMidX - touchState.midX;
+      const dy = newMidY - touchState.midY;
+      const rect = this.boardArea.getBoundingClientRect();
+      const cx = touchState.midX - rect.left;
+      const cy = touchState.midY - rect.top;
+      const contentX = (cx - touchState.offX) / touchState.scale;
+      const contentY = (cy - touchState.offY) / touchState.scale;
+      this.boardScale = newScale;
+      this.boardOffsetX = cx - contentX * newScale + dx;
+      this.boardOffsetY = cy - contentY * newScale + dy;
+      this.applyBoardTransform();
     }, { passive: false });
     const touchEnd = (e) => {
-      if (e.touches.length === 0) touchState = null;
-      else if (e.touches.length === 1) touchState = null;
+      if (e.touches.length < 2) touchState = null;
     };
     this.boardArea.addEventListener("touchend", touchEnd);
     this.boardArea.addEventListener("touchcancel", touchEnd);
@@ -1488,24 +1576,6 @@ const Game = {
       this.boardOffsetY = cy - contentY * newScale;
       this.applyBoardTransform();
     }, { passive: false });
-    // 鼠标拖拽平移（桌面端）
-    let mousePan = null;
-    this.boardArea.addEventListener("mousedown", (e) => {
-      if (e.target === this.boardArea || e.target === this.board) {
-        mousePan = { x: e.clientX, y: e.clientY, ox: this.boardOffsetX, oy: this.boardOffsetY };
-        e.preventDefault();
-      }
-    });
-    this.boardArea.addEventListener("mousemove", (e) => {
-      if (mousePan) {
-        this.boardOffsetX = mousePan.ox + e.clientX - mousePan.x;
-        this.boardOffsetY = mousePan.oy + e.clientY - mousePan.y;
-        this.applyBoardTransform();
-      }
-    });
-    const mouseEnd = () => { mousePan = null; };
-    this.boardArea.addEventListener("mouseup", mouseEnd);
-    this.boardArea.addEventListener("mouseleave", mouseEnd);
   },
   _ptrs: () => [],
 };
