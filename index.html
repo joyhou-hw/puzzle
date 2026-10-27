@@ -146,23 +146,30 @@
   .piece:active { cursor: grabbing; }
   .piece.dragging { cursor: grabbing; z-index: 1000; transition: none; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.4)); }
   .piece.locked { cursor: default; transition: left 0.2s ease, top 0.2s ease; }
-  .piece.wrong { filter: drop-shadow(0 0 0 2px var(--danger)) drop-shadow(0 1px 3px rgba(0,0,0,0.25)); animation: shake 0.3s; }
+  .piece.wrong {
+    filter: drop-shadow(0 0 0 2px #ff3333) drop-shadow(0 0 8px rgba(255,50,50,0.7));
+    animation: shake 0.3s;
+  }
   @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-3px);} 75%{transform:translateX(3px);} }
   .piece.snap-in { animation: snap 0.25s ease; }
   @keyframes snap { 0%{transform:scale(1.08);} 100%{transform:scale(1);} }
   .pool {
     flex: 0 0 auto; background: var(--surface);
     border-top: 1px solid var(--border);
-    padding: 8px 12px max(8px, env(safe-area-inset-bottom));
+    padding: 6px 12px max(8px, env(safe-area-inset-bottom));
   }
-  .pool-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 8px; }
+  .pool-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; gap: 8px; }
   .pool-title { font-size: 12px; color: var(--text-muted); font-weight: 500; }
   .pool-track {
-    display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden;
+    display: flex; flex-wrap: wrap; gap: 6px;
+    overflow-y: auto; overflow-x: hidden;
     padding: 4px 2px 6px; scrollbar-width: thin;
-    -webkit-overflow-scrolling: touch; min-height: 76px;
+    -webkit-overflow-scrolling: touch;
+    max-height: calc(var(--pool-piece-h, 50px) * 2 + 30px);
+    transition: max-height 0.25s ease;
   }
-  .pool-track::-webkit-scrollbar { height: 6px; }
+  .pool-track.expanded { max-height: 60vh; }
+  .pool-track::-webkit-scrollbar { width: 6px; }
   .pool-track::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   .pool-piece {
     flex: 0 0 auto;
@@ -174,6 +181,11 @@
   }
   .pool-piece:active { cursor: grabbing; transform: scale(1.06); }
   .pool-empty { color: var(--text-muted); font-size: 12px; padding: 20px; text-align: center; flex: 1; }
+  .pool-expand-btn {
+    flex: 0 0 auto; font-size: 11px; padding: 2px 8px;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    background: var(--surface); color: var(--text-muted); cursor: pointer;
+  }
   .modal-mask {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6);
     display: flex; align-items: center; justify-content: center;
@@ -465,7 +477,7 @@
         <span class="progress-text" id="progressText">0 / 0</span>
       </div>
       <button class="btn btn-icon" id="hintBtn" title="按住查看原图">原图</button>
-      <button class="btn btn-icon" id="refreshBtn" title="重置当前关">刷新</button>
+      <button class="btn btn-icon" id="refreshBtn" title="重置当前关">重置</button>
       <button class="btn btn-icon" id="backToLevelsBtn" title="返回关卡列表">关卡</button>
     </div>
   </header>
@@ -497,8 +509,8 @@
     </div>
     <footer class="pool">
       <div class="pool-head">
-        <span class="pool-title" id="poolTitle">碎片池 · 第 1 组</span>
-        <button class="btn" id="poolRefreshBtn">换一组</button>
+        <span class="pool-title" id="poolTitle">碎片池</span>
+        <button class="pool-expand-btn" id="poolExpandBtn">展开</button>
       </div>
       <div class="pool-track" id="poolTrack"></div>
     </footer>
@@ -826,8 +838,18 @@ const Game = {
     this.boardBgSvg = $("boardBgSvg");
     this.boardSvg = $("boardSvg");
     this.poolTrack = $("poolTrack");
-    $("refreshBtn").addEventListener("click", () => this.refreshGroup());
-    $("poolRefreshBtn").addEventListener("click", () => this.refreshGroup());
+    $("refreshBtn").addEventListener("click", () => this.refreshLevel());
+    $("poolExpandBtn").addEventListener("click", () => {
+      const track = this.poolTrack;
+      const btn = $("poolExpandBtn");
+      if (track.classList.contains("expanded")) {
+        track.classList.remove("expanded");
+        btn.textContent = "展开";
+      } else {
+        track.classList.add("expanded");
+        btn.textContent = "收起";
+      }
+    });
     $("nextLevelBtn").addEventListener("click", () => this.nextLevel());
     $("replayBtn").addEventListener("click", () => { $("winModal").classList.remove("show"); $("reveal").classList.add("show"); });
     $("revealCloseBtn").addEventListener("click", () => $("reveal").classList.remove("show"));
@@ -930,7 +952,7 @@ const Game = {
       this.imgSrcLabel = srcLabel;
       this.buildPieces();
       this.layoutBoard();
-      this.dealNextGroup(true);
+      this.dealAllPieces();
       this.updateProgress();
       ProgressManager.updateSubTitle();
       $("loading").classList.remove("show");
@@ -1072,47 +1094,74 @@ const Game = {
   },
   applyBoardTransform() {
     this.board.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.boardScale})`;
+    // 同步更新碎片池中碎片的尺寸（仅更新已有DOM，不重建）
+    this.updatePoolPieceSizes();
+  },
+  updatePoolPieceSizes() {
+    const poolSize = this.hexW * this.boardScale;
+    const poolH = this.metrics.hexH * this.boardScale;
+    const sx = poolSize / this.hexW;
+    this.poolTrack.style.setProperty('--pool-piece-h', poolH + 'px');
+    const pooled = this.pieceList.filter(p => p.status === "pooled" && p.poolEl);
+    for (const p of pooled) {
+      const el = p.poolEl;
+      el.style.width = poolSize + "px";
+      el.style.height = poolH + "px";
+      el.style.backgroundSize = `${this.totalW * sx}px ${this.totalH * sx}px`;
+      el.style.backgroundPosition = `-${(p.centerX - this.hexW / 2) * sx}px -${(p.centerY - this.metrics.hexH / 2) * sx}px`;
+    }
   },
   onEnterGame() {
     this.layoutBoard();
     ProgressManager.updateSubTitle();
   },
-  dealNextGroup(isFirst = false) {
-    const remaining = this.pieceList.filter(p => p.status === "pooled");
-    if (remaining.length === 0) { this.checkWin(); return; }
-    const n = Math.min(this.level.groupSize, remaining.length);
-    this.currentGroup = shuffle(remaining).slice(0, n);
-    this.groupIndex++;
+  dealAllPieces() {
+    // 一次性把所有未放置的碎片放入碎片池
+    this.currentGroup = this.pieceList.filter(p => p.status === "pooled");
+    this.groupIndex = 1;
     this.renderPool();
-    $("poolTitle").textContent = `碎片池 · 第 ${this.groupIndex} 组（${n} 块）`;
-    if (!isFirst) toast(`第 ${this.groupIndex} 组已发牌`);
+    const n = this.currentGroup.length;
+    $("poolTitle").textContent = `碎片池（${n} 块）`;
   },
-  refreshGroup() {
+  refreshLevel() {
+    // 重置当前关：所有碎片回到池子
     this.pieceList.forEach(p => {
-      if (p.status === "placed_wrong") {
-        if (p.el) { p.el.remove(); p.el = null; }
-        p.status = "pooled";
-      }
+      if (p.el) { p.el.remove(); p.el = null; }
+      if (p.poolEl) { p.poolEl = null; }
+      p.status = "pooled";
+      p.wrongX = 0; p.wrongY = 0;
     });
-    this.currentGroup = [];
-    this.dealNextGroup();
+    this.placedCount = 0; this.moves = 0; this.startTime = Date.now();
+    // 重置 SVG slot 颜色
+    if (this.boardSvg) {
+      this.boardSvg.querySelectorAll('[data-slot-id]').forEach(s => s.setAttribute("stroke", "rgba(127,127,127,0.25)"));
+    }
+    ProgressManager.clearProgress(this.level.id, this.currentMode);
+    this.dealAllPieces();
+    this.layoutBoard();
     this.saveProgress();
+    toast("已重置当前关");
   },
   renderPool() {
     this.poolTrack.innerHTML = "";
-    if (this.currentGroup.length === 0) {
+    // 碎片池中的碎片大小与板上图块一致，乘以当前缩放比例
+    const poolSize = this.hexW * this.boardScale;
+    const poolH = this.metrics.hexH * this.boardScale;
+    // 设置 CSS 变量供 max-height 计算使用
+    this.poolTrack.style.setProperty('--pool-piece-h', poolH + 'px');
+    const pooled = this.pieceList.filter(p => p.status === "pooled");
+    if (pooled.length === 0) {
       const e = document.createElement("div"); e.className = "pool-empty";
       e.textContent = "池子空了，拼完即可通关";
       this.poolTrack.appendChild(e); return;
     }
-    const size = 56; // 池中碎片宽
-    for (const p of this.currentGroup) {
+    const sx = poolSize / this.hexW;
+    for (const p of pooled) {
       const el = document.createElement("div");
       el.className = "pool-piece";
-      el.style.width = size + "px";
-      el.style.height = (size * SQRT3 / 2) + "px";
+      el.style.width = poolSize + "px";
+      el.style.height = poolH + "px";
       el.style.backgroundImage = `url(${this.imgDataURL})`;
-      const sx = size / this.hexW;
       el.style.backgroundSize = `${this.totalW * sx}px ${this.totalH * sx}px`;
       el.style.backgroundPosition = `-${(p.centerX - this.hexW / 2) * sx}px -${(p.centerY - this.metrics.hexH / 2) * sx}px`;
       el.dataset.pieceId = p.id;
@@ -1172,7 +1221,6 @@ const Game = {
       else {
         if (piece.el) { piece.el.remove(); piece.el = null; }
         piece.status = "pooled";
-        if (!this.currentGroup.includes(piece)) this.currentGroup.push(piece);
         this.renderPool();
       }
       return;
@@ -1202,8 +1250,6 @@ const Game = {
     this.placedCount++;
     const slot = this.boardSvg.querySelector(`[data-slot-id="${piece.id}"]`);
     if (slot) slot.setAttribute("stroke", "rgba(127,127,127,0.08)");
-    const i = this.currentGroup.indexOf(piece);
-    if (i >= 0) this.currentGroup.splice(i, 1);
     this.renderPool();
     this.updateProgress();
     this.saveProgress();
@@ -1221,8 +1267,6 @@ const Game = {
     piece.wrongX = lx - this.hexW / 2; piece.wrongY = ly - this.metrics.hexH / 2;
     this.bindDrag(el, piece, "board");
     if (source === "pool") {
-      const idx = this.currentGroup.indexOf(piece);
-      if (idx >= 0) this.currentGroup.splice(idx, 1);
       this.renderPool();
     }
     this.saveProgress();
@@ -1238,10 +1282,7 @@ const Game = {
     return el;
   },
   checkAutoDeal() {
-    if (this.currentGroup.length === 0) {
-      const rem = this.pieceList.filter(p => p.status === "pooled");
-      if (rem.length > 0) setTimeout(() => this.dealNextGroup(), 250);
-    }
+    // 全部碎片已一次性给出，无需自动发牌
   },
   checkWin() { if (this.placedCount === this.pieceList.length) this.onWin(); },
   onWin() {
@@ -1296,7 +1337,7 @@ const Game = {
       cols: this.level.cols, rows: this.level.rows,
       imageW: this.imgCanvas ? this.imgCanvas.width : 0, imageH: this.imgCanvas ? this.imgCanvas.height : 0,
       placedCorrect: [], placedWrong: [],
-      groupIndex: this.groupIndex, moves: this.moves,
+      moves: this.moves,
       startTime: this.startTime, updatedAt: Date.now(),
     };
     this.pieceList.forEach(p => {
@@ -1336,11 +1377,9 @@ const Game = {
       if (p.el) { p.el.remove(); p.el = null; }
       p.status = "pooled"; p.wrongX = 0; p.wrongY = 0;
     });
-    this.currentGroup = [];
     this.placedCount = 0;
     this.moves = snap.moves || 0;
     this.startTime = snap.startTime || Date.now();
-    this.groupIndex = Math.max(0, (snap.groupIndex || 1) - 1);
     for (const id of snap.placedCorrect) {
       const p = this.pieces[id];
       if (!p) continue;
@@ -1364,7 +1403,7 @@ const Game = {
       p.wrongX = w.x; p.wrongY = w.y;
       this.bindDrag(el, p, "board");
     }
-    this.dealNextGroup(true);
+    this.dealAllPieces();
     this.updateProgress();
     if (manual) toast("存档已加载");
     return true;
