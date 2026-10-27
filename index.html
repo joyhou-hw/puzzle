@@ -826,7 +826,7 @@ const Game = {
   hexW: 0, metrics: null,
   totalW: 0, totalH: 0,
   pieces: {}, pieceList: [],
-  currentGroup: [], groupIndex: 0,
+  currentGroup: [], groupIndex: 0, poolOrder: [],
   placedCount: 0, moves: 0, startTime: 0,
   boardScale: 1, boardOffsetX: 0, boardOffsetY: 0,
   boardArea: null, board: null, boardInner: null, boardBgImg: null, boardBgSvg: null, boardSvg: null, poolTrack: null,
@@ -1116,31 +1116,30 @@ const Game = {
     ProgressManager.updateSubTitle();
   },
   dealAllPieces() {
-    // 一次性把所有未放置的碎片放入碎片池
-    this.currentGroup = this.pieceList.filter(p => p.status === "pooled");
+    // 一次性把所有未放置的碎片放入碎片池，随机排序一次
+    this.poolOrder = shuffle(this.pieceList.filter(p => p.status === "pooled"));
+    this.currentGroup = this.poolOrder.slice();
     this.groupIndex = 1;
     this.renderPool();
     const n = this.currentGroup.length;
     $("poolTitle").textContent = `碎片池（${n} 块）`;
   },
   refreshLevel() {
-    // 重置当前关：所有碎片回到池子
+    // 重置：游离的图块放回池子，已正确放置的保留
     this.pieceList.forEach(p => {
-      if (p.el) { p.el.remove(); p.el = null; }
-      if (p.poolEl) { p.poolEl = null; }
-      p.status = "pooled";
-      p.wrongX = 0; p.wrongY = 0;
+      if (p.status === "placed_wrong") {
+        if (p.el) { p.el.remove(); p.el = null; }
+        if (p.poolEl) { p.poolEl = null; }
+        p.status = "pooled";
+        p.wrongX = 0; p.wrongY = 0;
+      }
     });
-    this.placedCount = 0; this.moves = 0; this.startTime = Date.now();
-    // 重置 SVG slot 颜色
-    if (this.boardSvg) {
-      this.boardSvg.querySelectorAll('[data-slot-id]').forEach(s => s.setAttribute("stroke", "rgba(127,127,127,0.25)"));
-    }
-    ProgressManager.clearProgress(this.level.id, this.currentMode);
-    this.dealAllPieces();
-    this.layoutBoard();
+    // 重新随机排序池中碎片
+    this.poolOrder = shuffle(this.pieceList.filter(p => p.status === "pooled"));
+    this.currentGroup = this.poolOrder.slice();
+    this.renderPool();
     this.saveProgress();
-    toast("已重置当前关");
+    toast("已重置碎片");
   },
   renderPool() {
     this.poolTrack.innerHTML = "";
@@ -1149,7 +1148,9 @@ const Game = {
     const poolH = this.metrics.hexH * this.boardScale;
     // 设置 CSS 变量供 max-height 计算使用
     this.poolTrack.style.setProperty('--pool-piece-h', poolH + 'px');
-    const pooled = shuffle(this.pieceList.filter(p => p.status === "pooled"));
+    const pooled = this.poolOrder.length > 0
+      ? this.poolOrder.filter(p => p.status === "pooled")
+      : this.pieceList.filter(p => p.status === "pooled");
     if (pooled.length === 0) {
       const e = document.createElement("div"); e.className = "pool-empty";
       e.textContent = "池子空了，拼完即可通关";
