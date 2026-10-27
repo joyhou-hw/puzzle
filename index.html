@@ -1361,6 +1361,26 @@ const Game = {
     this.placedCount++;
     const slot = this.boardSvg.querySelector(`[data-slot-id="${piece.id}"]`);
     if (slot) slot.setAttribute("stroke", "rgba(127,127,127,0.08)");
+    // 当位置A被正确填充后，把漂浮在A附近的错误图块送回池子
+    const correctCenterX = piece.centerX;
+    const correctCenterY = piece.centerY;
+    const threshold = this.hexW * 0.8;
+    const returned = [];
+    for (const p of this.pieceList) {
+      if (p.status !== "placed_wrong") continue;
+      // 错误图块漂浮的中心位置
+      const wrongCenterX = p.wrongX + this.hexW / 2;
+      const wrongCenterY = p.wrongY + this.metrics.hexH / 2;
+      const dist = Math.hypot(wrongCenterX - correctCenterX, wrongCenterY - correctCenterY);
+      if (dist < threshold) {
+        // 这个错误图块漂浮在A附近，送回池子
+        if (p.el) { p.el.remove(); p.el = null; }
+        if (p.poolEl) { p.poolEl = null; }
+        p.status = "pooled";
+        p.wrongX = 0; p.wrongY = 0;
+        returned.push(p);
+      }
+    }
     this.renderPool();
     this.updateProgress();
     this.saveProgress();
