@@ -1149,7 +1149,7 @@ const Game = {
     const poolH = this.metrics.hexH * this.boardScale;
     // 设置 CSS 变量供 max-height 计算使用
     this.poolTrack.style.setProperty('--pool-piece-h', poolH + 'px');
-    const pooled = this.pieceList.filter(p => p.status === "pooled");
+    const pooled = shuffle(this.pieceList.filter(p => p.status === "pooled"));
     if (pooled.length === 0) {
       const e = document.createElement("div"); e.className = "pool-empty";
       e.textContent = "池子空了，拼完即可通关";
