@@ -165,13 +165,17 @@
     border: 1px dashed rgba(127,127,127,0.15);
     border-radius: 4px;
   }
-  /* Slot highlight for drag target hint */
+  /* Slot highlight for drag target hint (red - shows where piece will land) */
   .slot-highlight {
-    fill: rgba(15,220,120,0.15) !important;
-    stroke: rgba(15,220,120,0.6) !important;
+    fill: rgba(255,80,80,0.12) !important;
+    stroke: rgba(255,80,80,0.5) !important;
     stroke-width: 2 !important;
     stroke-dasharray: none !important;
-    filter: drop-shadow(0 0 6px rgba(15,220,120,0.5));
+    filter: drop-shadow(0 0 6px rgba(255,80,80,0.4));
+    transition: opacity 0.4s ease;
+  }
+  .slot-highlight.fading {
+    opacity: 0;
   }
   /* Puzzle border glow */
   .puzzle-border-glow {
@@ -1325,6 +1329,18 @@ const Game = {
   bindDrag(el, piece) {
     let dragging = false, startX = 0, startY = 0, originRect = null, ghostEl = null, pointerId = null;
     let prevHighlight = null;
+    const clearHighlight = (fade = false) => {
+      if (prevHighlight) {
+        if (fade) {
+          prevHighlight.classList.add("fading");
+          const h = prevHighlight;
+          setTimeout(() => { h.classList.remove("slot-highlight", "fading"); }, 400);
+        } else {
+          prevHighlight.classList.remove("slot-highlight", "fading");
+        }
+        prevHighlight = null;
+      }
+    };
     el.addEventListener("pointerdown", (e) => {
       if (piece.status === "placed_correct") return;
       if (this._isGesturing) return;
@@ -1363,13 +1379,13 @@ const Game = {
         try { el.releasePointerCapture(pointerId); } catch(_) {}
         el.style.opacity = "1";
         if (ghostEl) { ghostEl.remove(); ghostEl = null; }
-        if (prevHighlight) { prevHighlight.classList.remove("slot-highlight"); prevHighlight = null; }
+        clearHighlight(true);
         return;
       }
       const ghostW = ghostEl.offsetWidth, ghostH = ghostEl.offsetHeight;
       ghostEl.style.left = (e.clientX - ghostW / 2) + "px";
       ghostEl.style.top = (e.clientY - ghostH / 2) + "px";
-      // Target hint: highlight nearest slot
+      // Target hint: highlight nearest slot (any slot, not just correct)
       const boardRect = this.boardInner.getBoundingClientRect();
       const cx = e.clientX, cy = e.clientY;
       const inside = cx >= boardRect.left && cx <= boardRect.right && cy >= boardRect.top && cy <= boardRect.bottom;
@@ -1384,15 +1400,15 @@ const Game = {
         const tol = this.hexW * 0.55;
         const slotEl = nearest ? this.boardSvg.querySelector(`[data-slot-id="${nearest.id}"]`) : null;
         if (prevHighlight && prevHighlight !== slotEl) {
-          prevHighlight.classList.remove("slot-highlight");
-          prevHighlight = null;
+          clearHighlight(true);
         }
-        if (slotEl && minD <= tol && nearest.id === piece.id) {
+        if (slotEl && minD <= tol && !slotEl.classList.contains("slot-highlight")) {
+          slotEl.classList.remove("fading");
           slotEl.classList.add("slot-highlight");
           prevHighlight = slotEl;
         }
       } else {
-        if (prevHighlight) { prevHighlight.classList.remove("slot-highlight"); prevHighlight = null; }
+        clearHighlight(true);
       }
     });
     const endDrag = (e) => {
@@ -1400,7 +1416,7 @@ const Game = {
       dragging = false;
       try { el.releasePointerCapture(pointerId); } catch(_) {}
       el.style.opacity = "1";
-      if (prevHighlight) { prevHighlight.classList.remove("slot-highlight"); prevHighlight = null; }
+      clearHighlight(true);
       const gr = ghostEl.getBoundingClientRect();
       ghostEl.remove(); ghostEl = null;
       this.handleDrop(piece, gr.left + gr.width / 2, gr.top + gr.height / 2, el);
