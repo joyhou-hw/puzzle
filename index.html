@@ -1073,121 +1073,106 @@ const Game = {
     const pw = hexW + gap, ph = hexH + gap;
     const numPieces = this.pieceList.length;
     const isLandscape = this.totalW >= this.totalH;
-    // Calculate margins to match screen aspect ratio
-    // contentW = totalW + 2*marginX, contentH = totalH + 2*marginY
-    // We want contentW/contentH = screenRatio
-    // Also need enough slots for numPieces
-    let marginX, marginY;
-    if (isLandscape) {
-      // Pieces go top/bottom: marginY is primary
-      const rowsEach = Math.max(2, Math.ceil(Math.sqrt(numPieces / 2)));
-      const minMarginY = rowsEach * ph + gap;
-      const minMarginX = Math.max(hexW * 0.5, this.totalW * 0.04);
-      // Try to match screen ratio
-      // contentW/contentH = screenRatio => (totalW + 2*mx) / (totalH + 2*my) = screenRatio
-      // Start with minMarginY, solve for marginX
-      marginY = minMarginY;
-      marginX = (screenRatio * (this.totalH + 2 * marginY) - this.totalW) / 2;
-      if (marginX < minMarginX) marginX = minMarginX;
-    } else {
-      // Pieces go left/right: marginX is primary
-      const colsEach = Math.max(2, Math.ceil(Math.sqrt(numPieces / 2)));
-      const minMarginX = colsEach * pw + gap;
-      const minMarginY = Math.max(hexH * 0.5, this.totalH * 0.04);
-      marginX = minMarginX;
-      marginY = (this.totalH - this.totalW / screenRatio + 2 * marginX / screenRatio) / 2;
-      // More robust: (totalW + 2*mx) / (totalH + 2*my) = screenRatio
-      // => totalH + 2*my = (totalW + 2*mx) / screenRatio
-      // => my = ((totalW + 2*mx) / screenRatio - totalH) / 2
-      marginY = ((this.totalW + 2 * marginX) / screenRatio - this.totalH) / 2;
-      if (marginY < minMarginY) marginY = minMarginY;
-    }
+    // 总面积法：拼图面积 + 碎片面积 = 内容总面积
+    // 然后根据屏幕比例反推 contentW / contentH
+    const puzzleArea = this.totalW * this.totalH;
+    const pieceArea = numPieces * pw * ph * 1.2; // 1.2 系数留出间隙
+    const totalArea = puzzleArea + pieceArea;
+    let contentW = Math.sqrt(totalArea * screenRatio);
+    let contentH = Math.sqrt(totalArea / screenRatio);
+    // 确保content比拼图大
+    if (contentW < this.totalW + pw * 2) contentW = this.totalW + pw * 2;
+    if (contentH < this.totalH + ph * 2) contentH = this.totalH + ph * 2;
+    let marginX = Math.max(pw, (contentW - this.totalW) / 2);
+    let marginY = Math.max(ph, (contentH - this.totalH) / 2);
     this.contentW = this.totalW + 2 * marginX;
     this.contentH = this.totalH + 2 * marginY;
     this.marginX = marginX; this.marginY = marginY;
-    // Generate slots around the puzzle
+    // 环形填充：先填主方向（上下或左右），再填次方向
     const slots = [];
+    const used = new Set(); // 防止重复位置
+    const key = (x, y) => `${Math.round(x)},${Math.round(y)}`;
+    const tryAdd = (x, y) => {
+      if (slots.length >= numPieces) return;
+      const k = key(x, y);
+      if (used.has(k)) return;
+      used.add(k);
+      slots.push({ x, y });
+    };
     if (isLandscape) {
-      const colsPerRow = Math.max(1, Math.floor(this.contentW / pw));
-      // Above puzzle
-      for (let row = 0; row < Math.ceil(marginY / ph) + 1; row++) {
-        for (let col = 0; col < colsPerRow; col++) {
-          if (slots.length >= numPieces) break;
-          const x = -marginX + col * pw + gap;
-          const y = -marginY + row * ph + gap;
+      // 横图：先填上下，再填左右
+      const topBottomRows = Math.ceil(marginY / ph);
+      const topBottomCols = Math.floor(this.contentW / pw);
+      // 上
+      for (let r = 0; r < topBottomRows && slots.length < numPieces; r++) {
+        for (let c = 0; c < topBottomCols && slots.length < numPieces; c++) {
+          const x = -marginX + c * pw + gap;
+          const y = -marginY + r * ph + gap;
           if (y + hexH > -2) continue;
-          slots.push({ x, y });
+          tryAdd(x, y);
         }
       }
-      // Below puzzle
-      for (let row = 0; row < Math.ceil(marginY / ph) + 1; row++) {
-        for (let col = 0; col < colsPerRow; col++) {
-          if (slots.length >= numPieces) break;
-          const x = -marginX + col * pw + gap;
-          const y = this.totalH + gap + row * ph + gap;
-          slots.push({ x, y });
+      // 下
+      for (let r = 0; r < topBottomRows && slots.length < numPieces; r++) {
+        for (let c = 0; c < topBottomCols && slots.length < numPieces; c++) {
+          const x = -marginX + c * pw + gap;
+          const y = this.totalH + gap + r * ph + gap;
+          tryAdd(x, y);
+        }
+      }
+      // 左右
+      const leftRightCols = Math.ceil(marginX / pw);
+      const leftRightRows = Math.floor(this.contentH / ph);
+      for (let c = 0; c < leftRightCols && slots.length < numPieces; c++) {
+        for (let r = 0; r < leftRightRows && slots.length < numPieces; r++) {
+          const y = -marginY + r * ph + gap;
+          if (y < 0 || y + hexH > this.totalH) continue;
+          const xL = -marginX + c * pw + gap;
+          const xR = this.totalW + gap + c * pw + gap;
+          tryAdd(xL, y);
+          tryAdd(xR, y);
         }
       }
     } else {
-      const rowsPerCol = Math.max(1, Math.floor(this.contentH / ph));
-      // Left of puzzle
-      for (let col = 0; col < Math.ceil(marginX / pw) + 1; col++) {
-        for (let row = 0; row < rowsPerCol; row++) {
-          if (slots.length >= numPieces) break;
-          const x = -marginX + col * pw + gap;
-          const y = -marginY + row * ph + gap;
+      // 竖图：先填左右，再填上下
+      const leftRightCols = Math.ceil(marginX / pw);
+      const leftRightRows = Math.floor(this.contentH / ph);
+      // 左
+      for (let c = 0; c < leftRightCols && slots.length < numPieces; c++) {
+        for (let r = 0; r < leftRightRows && slots.length < numPieces; r++) {
+          const x = -marginX + c * pw + gap;
+          const y = -marginY + r * ph + gap;
           if (x + hexW > -2) continue;
-          slots.push({ x, y });
+          tryAdd(x, y);
         }
       }
-      // Right of puzzle
-      for (let col = 0; col < Math.ceil(marginX / pw) + 1; col++) {
-        for (let row = 0; row < rowsPerCol; row++) {
-          if (slots.length >= numPieces) break;
-          const x = this.totalW + gap + col * pw + gap;
-          const y = -marginY + row * ph + gap;
-          slots.push({ x, y });
+      // 右
+      for (let c = 0; c < leftRightCols && slots.length < numPieces; c++) {
+        for (let r = 0; r < leftRightRows && slots.length < numPieces; r++) {
+          const x = this.totalW + gap + c * pw + gap;
+          const y = -marginY + r * ph + gap;
+          tryAdd(x, y);
         }
       }
-    }
-    // Overflow: fill remaining on other sides
-    if (slots.length < numPieces) {
-      if (isLandscape) {
-        const sideRows = Math.floor(this.contentH / ph);
-        for (let col = 0; col < 6; col++) {
-          for (let row = 0; row < sideRows; row++) {
-            if (slots.length >= numPieces) break;
-            const xL = -marginX + col * pw;
-            const xR = this.totalW + gap + col * pw;
-            const y = -marginY + row * ph + gap;
-            if (y >= 0 && y + hexH <= this.totalH) {
-              slots.push({ x: xL, y });
-              if (slots.length >= numPieces) break;
-              slots.push({ x: xR, y });
-            }
-          }
-        }
-      } else {
-        const topCols = Math.floor(this.contentW / pw);
-        for (let row = 0; row < 6; row++) {
-          for (let col = 0; col < topCols; col++) {
-            if (slots.length >= numPieces) break;
-            const x = -marginX + col * pw + gap;
-            const yT = -marginY + row * ph;
-            const yB = this.totalH + gap + row * ph;
-            if (x >= 0 && x + hexW <= this.totalW) {
-              slots.push({ x, y: yT });
-              if (slots.length >= numPieces) break;
-              slots.push({ x, y: yB });
-            }
-          }
+      // 上下
+      const topBottomRows = Math.ceil(marginY / ph);
+      const topBottomCols = Math.floor(this.contentW / pw);
+      for (let r = 0; r < topBottomRows && slots.length < numPieces; r++) {
+        for (let c = 0; c < topBottomCols && slots.length < numPieces; c++) {
+          const x = -marginX + c * pw + gap;
+          if (x < 0 || x + hexW > this.totalW) continue;
+          const yT = -marginY + r * ph + gap;
+          const yB = this.totalH + gap + r * ph + gap;
+          tryAdd(x, yT);
+          tryAdd(x, yB);
         }
       }
     }
+    // 兜底：随机填充剩余
     while (slots.length < numPieces) {
       const x = -marginX + Math.random() * this.contentW;
       const y = -marginY + Math.random() * this.contentH;
-      slots.push({ x, y });
+      tryAdd(x, y);
     }
     this.scatterSlots = slots.slice(0, numPieces);
   },
