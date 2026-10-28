@@ -109,13 +109,8 @@
   .view.active { display: flex; }
   .board-area {
     flex: 1 1 auto; position: relative; overflow: hidden;
-    background:
-      linear-gradient(45deg, var(--surface-muted) 25%, transparent 25%),
-      linear-gradient(-45deg, var(--surface-muted) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, var(--surface-muted) 75%),
-      linear-gradient(-45deg, transparent 75%, var(--surface-muted) 75%);
-    background-size: 20px 20px;
-    background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+    background: #1a1d24;
+    background-image: radial-gradient(circle at 50% 50%, #232830 0%, #1a1d24 60%, #12141a 100%);
     touch-action: none;
   }
   .board { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
@@ -126,6 +121,11 @@
     filter: saturate(0.6);
   }
   .board-area.show-preview .board-bg-img { opacity: 0.85; filter: none; }
+  /* Edge-preview mode (hard/nightmare): hide full img, show edge SVG */
+  .board-area.edge-preview .board-bg-img { display: none; }
+  .board-area.edge-preview .board-bg-svg { display: block; opacity: 1; filter: none; }
+  .board-area.edge-preview.show-preview .board-bg-svg { display: none; }
+  .board-area.edge-preview.show-preview .board-bg-img { display: block; opacity: 0.85; filter: none; }
   .board-bg-svg { display: none; }
   .board-svg { position: absolute; top: 0; left: 0; pointer-events: none; }
   .piece {
@@ -147,12 +147,37 @@
   .piece.snap-in { animation: snap 0.25s ease; }
   @keyframes snap { 0%{transform:scale(1.08);} 100%{transform:scale(1);} }
   .piece.scattered {
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+  }
+  .piece.fly-back {
+    transition: left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  .piece.lock-in {
+    animation: lockIn 0.4s ease;
+  }
+  @keyframes lockIn {
+    0% { transform: scale(1.15); filter: brightness(1.5) drop-shadow(0 0 12px rgba(15,220,120,0.8)); }
+    50% { transform: scale(0.95); filter: brightness(1.2) drop-shadow(0 0 8px rgba(15,220,120,0.5)); }
+    100% { transform: scale(1); filter: none; }
   }
   .slot-mark {
     position: absolute; pointer-events: none;
     border: 1px dashed rgba(127,127,127,0.15);
     border-radius: 4px;
+  }
+  /* Slot highlight for drag target hint */
+  .slot-highlight {
+    fill: rgba(15,220,120,0.15) !important;
+    stroke: rgba(15,220,120,0.6) !important;
+    stroke-width: 2 !important;
+    stroke-dasharray: none !important;
+    filter: drop-shadow(0 0 6px rgba(15,220,120,0.5));
+  }
+  /* Puzzle border glow */
+  .puzzle-border-glow {
+    position: absolute; pointer-events: none;
+    box-shadow: 0 0 20px rgba(15,220,120,0.15), inset 0 0 20px rgba(15,220,120,0.05);
+    border-radius: 8px;
   }
   .modal-mask {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -470,6 +495,7 @@
       <div class="board" id="board">
         <div class="board-inner" id="boardInner">
           <img class="board-bg-img" id="boardBgImg" alt="">
+          <svg class="board-bg-img board-bg-svg" id="boardBgSvg" xmlns="http://www.w3.org/2000/svg"></svg>
           <svg class="board-svg" id="boardSvg"></svg>
         </div>
       </div>
@@ -791,13 +817,14 @@ const Game = {
   contentW: 0, contentH: 0, marginX: 0, marginY: 0,
   placedCount: 0, moves: 0, startTime: 0,
   boardScale: 1, boardOffsetX: 0, boardOffsetY: 0,
-  boardArea: null, board: null, boardInner: null, boardBgImg: null, boardSvg: null,
+  boardArea: null, board: null, boardInner: null, boardBgImg: null, boardBgSvg: null, boardSvg: null,
   _isGesturing: false,
   init() {
     this.boardArea = $("boardArea");
     this.board = $("board");
     this.boardInner = $("boardInner");
     this.boardBgImg = $("boardBgImg");
+    this.boardBgSvg = $("boardBgSvg");
     this.boardSvg = $("boardSvg");
     $("refreshBtn").addEventListener("click", () => this.refreshLevel());
     $("nextLevelBtn").addEventListener("click", () => this.nextLevel());
@@ -941,12 +968,23 @@ const Game = {
         this.pieceList.push(p);
       }
     }
-    this.boardInner.querySelectorAll(".piece, .slot-mark").forEach(el => el.remove());
+    this.boardInner.querySelectorAll(".piece, .slot-mark, .puzzle-border-glow").forEach(el => el.remove());
     this.boardInner.style.width = this.totalW + "px";
     this.boardInner.style.height = this.totalH + "px";
     this.boardBgImg.src = this.imgDataURL;
     this.boardBgImg.style.width = this.totalW + "px";
     this.boardBgImg.style.height = this.totalH + "px";
+    // Edge preview for hard/nightmare/hell modes
+    const isEdgePreview = !this.level.preview;
+    this.boardArea.classList.toggle("edge-preview", isEdgePreview);
+    if (isEdgePreview) this.buildEdgeMask();
+    // Puzzle border glow
+    const glow = document.createElement("div");
+    glow.className = "puzzle-border-glow";
+    glow.style.left = "-4px"; glow.style.top = "-4px";
+    glow.style.width = (this.totalW + 8) + "px";
+    glow.style.height = (this.totalH + 8) + "px";
+    this.boardInner.appendChild(glow);
     this.renderSlots();
     this.startTimer();
     try {
@@ -954,6 +992,48 @@ const Game = {
         levelId: this.level.id, mode: this.currentMode,
       }));
     } catch (e) {}
+  },
+  buildEdgeMask() {
+    const m = this.metrics;
+    const SVGNS = "http://www.w3.org/2000/svg";
+    const svg = this.boardBgSvg;
+    svg.setAttribute("width", this.totalW);
+    svg.setAttribute("height", this.totalH);
+    svg.setAttribute("viewBox", `0 0 ${this.totalW} ${this.totalH}`);
+    svg.innerHTML = "";
+    const defs = document.createElementNS(SVGNS, "defs");
+    const mask = document.createElementNS(SVGNS, "mask");
+    mask.setAttribute("id", "edgeMask");
+    mask.setAttribute("maskUnits", "userSpaceOnUse");
+    const whiteRect = document.createElementNS(SVGNS, "rect");
+    whiteRect.setAttribute("x", "0"); whiteRect.setAttribute("y", "0");
+    whiteRect.setAttribute("width", this.totalW); whiteRect.setAttribute("height", this.totalH);
+    whiteRect.setAttribute("fill", "white");
+    mask.appendChild(whiteRect);
+    const pts = (cx, cy) => {
+      const angles = [0, 60, 120, 180, 240, 300].map(a => a * Math.PI / 180);
+      return angles.map(a => {
+        const px = cx + (m.hexW / 2) * Math.cos(a);
+        const py = cy + (m.hexW / 2) * Math.sin(a);
+        return `${px.toFixed(1)},${py.toFixed(1)}`;
+      }).join(" ");
+    };
+    for (const p of this.pieceList) {
+      const poly = document.createElementNS(SVGNS, "polygon");
+      poly.setAttribute("points", pts(p.centerX, p.centerY));
+      poly.setAttribute("fill", "black");
+      mask.appendChild(poly);
+    }
+    defs.appendChild(mask);
+    svg.appendChild(defs);
+    const image = document.createElementNS(SVGNS, "image");
+    image.setAttribute("href", this.imgDataURL);
+    image.setAttribute("xlink:href", this.imgDataURL);
+    image.setAttribute("x", "0"); image.setAttribute("y", "0");
+    image.setAttribute("width", this.totalW); image.setAttribute("height", this.totalH);
+    image.setAttribute("preserveAspectRatio", "none");
+    image.setAttribute("mask", "url(#edgeMask)");
+    svg.appendChild(image);
   },
   renderSlots() {
     const svg = this.boardSvg;
@@ -970,7 +1050,8 @@ const Game = {
         return `${px.toFixed(1)},${py.toFixed(1)}`;
       }).join(" ");
     };
-    const strokeColor = "rgba(127,127,127,0.3)";
+    const strokeColor = "rgba(127,127,127,0.25)";
+    const slotFilter = "drop-shadow(0 0 3px rgba(127,127,127,0.15))";
     for (const p of this.pieceList) {
       const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
       poly.setAttribute("points", pts(p.centerX, p.centerY));
@@ -978,6 +1059,7 @@ const Game = {
       poly.setAttribute("stroke", strokeColor);
       poly.setAttribute("stroke-width", "1");
       poly.setAttribute("stroke-dasharray", "3 3");
+      poly.style.filter = slotFilter;
       poly.dataset.slotId = p.id;
       svg.appendChild(poly);
     }
@@ -985,22 +1067,50 @@ const Game = {
   computeScatterLayout() {
     const aw = this.boardArea.clientWidth || 390;
     const ah = this.boardArea.clientHeight || 700;
+    const screenRatio = aw / ah;
     const hexW = this.hexW, hexH = this.metrics.hexH;
     const gap = 4;
     const pw = hexW + gap, ph = hexH + gap;
-    const isLandscape = this.totalW >= this.totalH;
     const numPieces = this.pieceList.length;
+    const isLandscape = this.totalW >= this.totalH;
+    // Calculate margins to match screen aspect ratio
+    // contentW = totalW + 2*marginX, contentH = totalH + 2*marginY
+    // We want contentW/contentH = screenRatio
+    // Also need enough slots for numPieces
+    let marginX, marginY;
     if (isLandscape) {
-      const marginX = Math.max(hexW * 1.5, this.totalW * 0.08);
-      const availRowsEach = Math.max(2, Math.ceil(Math.sqrt(numPieces / 2)));
-      const marginY = availRowsEach * ph + gap;
-      this.contentW = this.totalW + 2 * marginX;
-      this.contentH = this.totalH + 2 * marginY;
-      this.marginX = marginX; this.marginY = marginY;
+      // Pieces go top/bottom: marginY is primary
+      const rowsEach = Math.max(2, Math.ceil(Math.sqrt(numPieces / 2)));
+      const minMarginY = rowsEach * ph + gap;
+      const minMarginX = Math.max(hexW * 0.5, this.totalW * 0.04);
+      // Try to match screen ratio
+      // contentW/contentH = screenRatio => (totalW + 2*mx) / (totalH + 2*my) = screenRatio
+      // Start with minMarginY, solve for marginX
+      marginY = minMarginY;
+      marginX = (screenRatio * (this.totalH + 2 * marginY) - this.totalW) / 2;
+      if (marginX < minMarginX) marginX = minMarginX;
+    } else {
+      // Pieces go left/right: marginX is primary
+      const colsEach = Math.max(2, Math.ceil(Math.sqrt(numPieces / 2)));
+      const minMarginX = colsEach * pw + gap;
+      const minMarginY = Math.max(hexH * 0.5, this.totalH * 0.04);
+      marginX = minMarginX;
+      marginY = (this.totalH - this.totalW / screenRatio + 2 * marginX / screenRatio) / 2;
+      // More robust: (totalW + 2*mx) / (totalH + 2*my) = screenRatio
+      // => totalH + 2*my = (totalW + 2*mx) / screenRatio
+      // => my = ((totalW + 2*mx) / screenRatio - totalH) / 2
+      marginY = ((this.totalW + 2 * marginX) / screenRatio - this.totalH) / 2;
+      if (marginY < minMarginY) marginY = minMarginY;
+    }
+    this.contentW = this.totalW + 2 * marginX;
+    this.contentH = this.totalH + 2 * marginY;
+    this.marginX = marginX; this.marginY = marginY;
+    // Generate slots around the puzzle
+    const slots = [];
+    if (isLandscape) {
       const colsPerRow = Math.max(1, Math.floor(this.contentW / pw));
-      const slots = [];
       // Above puzzle
-      for (let row = 0; row < availRowsEach + 2; row++) {
+      for (let row = 0; row < Math.ceil(marginY / ph) + 1; row++) {
         for (let col = 0; col < colsPerRow; col++) {
           if (slots.length >= numPieces) break;
           const x = -marginX + col * pw + gap;
@@ -1010,7 +1120,7 @@ const Game = {
         }
       }
       // Below puzzle
-      for (let row = 0; row < availRowsEach + 2; row++) {
+      for (let row = 0; row < Math.ceil(marginY / ph) + 1; row++) {
         for (let col = 0; col < colsPerRow; col++) {
           if (slots.length >= numPieces) break;
           const x = -marginX + col * pw + gap;
@@ -1018,38 +1128,10 @@ const Game = {
           slots.push({ x, y });
         }
       }
-      // Sides as overflow
-      const sideRows = Math.floor(this.contentH / ph);
-      for (let col = 0; col < 4; col++) {
-        for (let row = 0; row < sideRows; row++) {
-          if (slots.length >= numPieces) break;
-          const xL = -marginX + col * pw;
-          const xR = this.totalW + gap + col * pw;
-          const y = -marginY + row * ph + gap;
-          if (y >= 0 && y + hexH <= this.totalH) {
-            slots.push({ x: xL, y });
-            if (slots.length >= numPieces) break;
-            slots.push({ x: xR, y });
-          }
-        }
-      }
-      while (slots.length < numPieces) {
-        const x = -marginX + Math.random() * (this.contentW);
-        const y = (Math.random() < 0.5 ? -marginY : this.totalH + gap) + Math.random() * marginY;
-        slots.push({ x, y });
-      }
-      this.scatterSlots = slots.slice(0, numPieces);
     } else {
-      const marginY = Math.max(hexH * 1.5, this.totalH * 0.08);
-      const availColsEach = Math.max(2, Math.ceil(Math.sqrt(numPieces / 2)));
-      const marginX = availColsEach * pw + gap;
-      this.contentW = this.totalW + 2 * marginX;
-      this.contentH = this.totalH + 2 * marginY;
-      this.marginX = marginX; this.marginY = marginY;
       const rowsPerCol = Math.max(1, Math.floor(this.contentH / ph));
-      const slots = [];
       // Left of puzzle
-      for (let col = 0; col < availColsEach + 2; col++) {
+      for (let col = 0; col < Math.ceil(marginX / pw) + 1; col++) {
         for (let row = 0; row < rowsPerCol; row++) {
           if (slots.length >= numPieces) break;
           const x = -marginX + col * pw + gap;
@@ -1059,7 +1141,7 @@ const Game = {
         }
       }
       // Right of puzzle
-      for (let col = 0; col < availColsEach + 2; col++) {
+      for (let col = 0; col < Math.ceil(marginX / pw) + 1; col++) {
         for (let row = 0; row < rowsPerCol; row++) {
           if (slots.length >= numPieces) break;
           const x = this.totalW + gap + col * pw + gap;
@@ -1067,35 +1149,56 @@ const Game = {
           slots.push({ x, y });
         }
       }
-      // Top/bottom as overflow
-      const topCols = Math.floor(this.contentW / pw);
-      for (let row = 0; row < 4; row++) {
-        for (let col = 0; col < topCols; col++) {
-          if (slots.length >= numPieces) break;
-          const x = -marginX + col * pw + gap;
-          const yT = -marginY + row * ph;
-          const yB = this.totalH + gap + row * ph;
-          if (x >= 0 && x + hexW <= this.totalW) {
-            slots.push({ x, y: yT });
+    }
+    // Overflow: fill remaining on other sides
+    if (slots.length < numPieces) {
+      if (isLandscape) {
+        const sideRows = Math.floor(this.contentH / ph);
+        for (let col = 0; col < 6; col++) {
+          for (let row = 0; row < sideRows; row++) {
             if (slots.length >= numPieces) break;
-            slots.push({ x, y: yB });
+            const xL = -marginX + col * pw;
+            const xR = this.totalW + gap + col * pw;
+            const y = -marginY + row * ph + gap;
+            if (y >= 0 && y + hexH <= this.totalH) {
+              slots.push({ x: xL, y });
+              if (slots.length >= numPieces) break;
+              slots.push({ x: xR, y });
+            }
+          }
+        }
+      } else {
+        const topCols = Math.floor(this.contentW / pw);
+        for (let row = 0; row < 6; row++) {
+          for (let col = 0; col < topCols; col++) {
+            if (slots.length >= numPieces) break;
+            const x = -marginX + col * pw + gap;
+            const yT = -marginY + row * ph;
+            const yB = this.totalH + gap + row * ph;
+            if (x >= 0 && x + hexW <= this.totalW) {
+              slots.push({ x, y: yT });
+              if (slots.length >= numPieces) break;
+              slots.push({ x, y: yB });
+            }
           }
         }
       }
-      while (slots.length < numPieces) {
-        const x = (Math.random() < 0.5 ? -marginX : this.totalW + gap) + Math.random() * marginX;
-        const y = -marginY + Math.random() * (this.contentH);
-        slots.push({ x, y });
-      }
-      this.scatterSlots = slots.slice(0, numPieces);
     }
+    while (slots.length < numPieces) {
+      const x = -marginX + Math.random() * this.contentW;
+      const y = -marginY + Math.random() * this.contentH;
+      slots.push({ x, y });
+    }
+    this.scatterSlots = slots.slice(0, numPieces);
   },
   layoutBoard() {
     const aw = this.boardArea.clientWidth, ah = this.boardArea.clientHeight;
     if (!aw || !ah) return;
     if (this.scatterSlots.length === 0) this.computeScatterLayout();
+    // Recompute layout to match current screen size
+    this.computeScatterLayout();
     const sx = aw / this.contentW, sy = ah / this.contentH;
-    const s = Math.min(sx, sy) * 0.92;
+    const s = Math.min(sx, sy) * 0.95;
     this.boardScale = s;
     this.boardOffsetX = (aw - this.contentW * s) / 2 + this.marginX * s;
     this.boardOffsetY = (ah - this.contentH * s) / 2 + this.marginY * s;
@@ -1130,10 +1233,9 @@ const Game = {
       this.bindDrag(el, p);
     }
   },
-  returnToSlot(piece) {
-    // 找一个可用槽位放回
+  flyToSlot(piece) {
+    // 带飞回动画的returnToSlot
     if (this.availableSlots.length === 0) {
-      // 所有槽位都满了，找一个scattered状态的piece交换
       const scatterPiece = this.pieceList.find(p => p.status === "scattered" && p !== piece);
       if (scatterPiece && scatterPiece.slotIndex >= 0) {
         this.availableSlots.push(scatterPiece.slotIndex);
@@ -1149,16 +1251,71 @@ const Game = {
     piece.status = "scattered";
     piece.wrongX = 0; piece.wrongY = 0;
     if (piece.el) {
-      piece.el.className = "piece scattered";
+      piece.el.className = "piece scattered fly-back";
       piece.el.style.left = slot.x + "px";
       piece.el.style.top = slot.y + "px";
+      const bindEl = piece.el;
+      setTimeout(() => {
+        if (piece.el === bindEl) {
+          piece.el.classList.remove("fly-back");
+          this.bindDrag(piece.el, piece);
+        }
+      }, 450);
     } else {
-      const el = this.makePieceEl(piece, "scattered");
+      const el = this.makePieceEl(piece, "scattered fly-back");
       el.style.left = slot.x + "px";
       el.style.top = slot.y + "px";
       this.boardInner.appendChild(el);
       piece.el = el;
-      this.bindDrag(el, piece);
+      setTimeout(() => {
+        if (piece.el === el) {
+          piece.el.classList.remove("fly-back");
+          this.bindDrag(piece.el, piece);
+        }
+      }, 450);
+    }
+    return true;
+  },
+  returnToSlot(piece) {
+    // 找一个可用槽位放回
+    if (this.availableSlots.length === 0) {
+      const scatterPiece = this.pieceList.find(p => p.status === "scattered" && p !== piece);
+      if (scatterPiece && scatterPiece.slotIndex >= 0) {
+        this.availableSlots.push(scatterPiece.slotIndex);
+        this.slotMap[scatterPiece.slotIndex] = null;
+        scatterPiece.slotIndex = -1;
+      }
+    }
+    if (this.availableSlots.length === 0) return false;
+    const slotIdx = this.availableSlots.pop();
+    const slot = this.scatterSlots[slotIdx];
+    this.slotMap[slotIdx] = piece.id;
+    piece.slotIndex = slotIdx;
+    piece.status = "scattered";
+    piece.wrongX = 0; piece.wrongY = 0;
+    if (piece.el) {
+      piece.el.className = "piece scattered fly-back";
+      piece.el.style.left = slot.x + "px";
+      piece.el.style.top = slot.y + "px";
+      const bindEl = piece.el;
+      setTimeout(() => {
+        if (piece.el === bindEl) {
+          piece.el.classList.remove("fly-back");
+          this.bindDrag(piece.el, piece);
+        }
+      }, 450);
+    } else {
+      const el = this.makePieceEl(piece, "scattered fly-back");
+      el.style.left = slot.x + "px";
+      el.style.top = slot.y + "px";
+      this.boardInner.appendChild(el);
+      piece.el = el;
+      setTimeout(() => {
+        if (piece.el === el) {
+          piece.el.classList.remove("fly-back");
+          this.bindDrag(piece.el, piece);
+        }
+      }, 450);
     }
     return true;
   },
@@ -1174,7 +1331,7 @@ const Game = {
     this.pieceList.forEach(p => {
       if (p.status === "placed_wrong") {
         this.freeSlot(p);
-        this.returnToSlot(p);
+        this.flyToSlot(p);
       }
     });
     this.saveProgress();
@@ -1182,6 +1339,7 @@ const Game = {
   },
   bindDrag(el, piece) {
     let dragging = false, startX = 0, startY = 0, originRect = null, ghostEl = null, pointerId = null;
+    let prevHighlight = null;
     el.addEventListener("pointerdown", (e) => {
       if (piece.status === "placed_correct") return;
       if (this._isGesturing) return;
@@ -1192,40 +1350,72 @@ const Game = {
       dragging = true;
       startX = e.clientX; startY = e.clientY;
       originRect = el.getBoundingClientRect();
+      // Ghost size matches board scale
+      const ghostW = this.hexW * this.boardScale;
+      const ghostH = this.metrics.hexH * this.boardScale;
+      const scaleRatio = this.boardScale;
       ghostEl = document.createElement("div");
       ghostEl.className = "piece dragging";
-      ghostEl.style.width = this.hexW + "px";
-      ghostEl.style.height = this.metrics.hexH + "px";
+      ghostEl.style.width = ghostW + "px";
+      ghostEl.style.height = ghostH + "px";
       ghostEl.style.backgroundImage = `url(${this.imgDataURL})`;
-      ghostEl.style.backgroundSize = `${this.totalW}px ${this.totalH}px`;
-      ghostEl.style.backgroundPosition = `-${piece.correctX}px -${piece.correctY}px`;
+      ghostEl.style.backgroundSize = `${this.totalW * scaleRatio}px ${this.totalH * scaleRatio}px`;
+      ghostEl.style.backgroundPosition = `-${piece.correctX * scaleRatio}px -${piece.correctY * scaleRatio}px`;
       ghostEl.style.clipPath = "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)";
       ghostEl.style.position = "fixed";
-      ghostEl.style.left = originRect.left + "px";
-      ghostEl.style.top = originRect.top + "px";
+      // Center ghost on finger
+      ghostEl.style.left = (e.clientX - ghostW / 2) + "px";
+      ghostEl.style.top = (e.clientY - ghostH / 2) + "px";
       ghostEl.style.zIndex = "1000";
       ghostEl.style.pointerEvents = "none";
       document.body.appendChild(ghostEl);
-      el.style.opacity = "0.3";
+      el.style.opacity = "0.15";
     });
     el.addEventListener("pointermove", (e) => {
       if (!dragging || e.pointerId !== pointerId) return;
       if (this._isGesturing) {
-        // 双指操作开始，取消拖拽
         dragging = false;
         try { el.releasePointerCapture(pointerId); } catch(_) {}
         el.style.opacity = "1";
         if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+        if (prevHighlight) { prevHighlight.classList.remove("slot-highlight"); prevHighlight = null; }
         return;
       }
-      ghostEl.style.left = (originRect.left + e.clientX - startX) + "px";
-      ghostEl.style.top = (originRect.top + e.clientY - startY) + "px";
+      const ghostW = ghostEl.offsetWidth, ghostH = ghostEl.offsetHeight;
+      ghostEl.style.left = (e.clientX - ghostW / 2) + "px";
+      ghostEl.style.top = (e.clientY - ghostH / 2) + "px";
+      // Target hint: highlight nearest slot
+      const boardRect = this.boardInner.getBoundingClientRect();
+      const cx = e.clientX, cy = e.clientY;
+      const inside = cx >= boardRect.left && cx <= boardRect.right && cy >= boardRect.top && cy <= boardRect.bottom;
+      if (inside) {
+        const lx = (cx - boardRect.left) / this.boardScale;
+        const ly = (cy - boardRect.top) / this.boardScale;
+        let nearest = null, minD = Infinity;
+        for (const p of this.pieceList) {
+          const d = Math.hypot(lx - p.centerX, ly - p.centerY);
+          if (d < minD) { minD = d; nearest = p; }
+        }
+        const tol = this.hexW * 0.55;
+        const slotEl = nearest ? this.boardSvg.querySelector(`[data-slot-id="${nearest.id}"]`) : null;
+        if (prevHighlight && prevHighlight !== slotEl) {
+          prevHighlight.classList.remove("slot-highlight");
+          prevHighlight = null;
+        }
+        if (slotEl && minD <= tol && nearest.id === piece.id) {
+          slotEl.classList.add("slot-highlight");
+          prevHighlight = slotEl;
+        }
+      } else {
+        if (prevHighlight) { prevHighlight.classList.remove("slot-highlight"); prevHighlight = null; }
+      }
     });
     const endDrag = (e) => {
       if (!dragging || e.pointerId !== pointerId) return;
       dragging = false;
       try { el.releasePointerCapture(pointerId); } catch(_) {}
       el.style.opacity = "1";
+      if (prevHighlight) { prevHighlight.classList.remove("slot-highlight"); prevHighlight = null; }
       const gr = ghostEl.getBoundingClientRect();
       ghostEl.remove(); ghostEl = null;
       this.handleDrop(piece, gr.left + gr.width / 2, gr.top + gr.height / 2, el);
@@ -1239,12 +1429,11 @@ const Game = {
     // 检查是否在拼图区域内
     const insidePuzzle = clientX >= boardRect.left && clientX <= boardRect.right && clientY >= boardRect.top && clientY <= boardRect.bottom;
     if (!insidePuzzle) {
-      // 放在拼图外，回到槽位
+      // 放在拼图外，回到槽位（带动画）
       this.freeSlot(piece);
       if (originEl && originEl !== piece.el) { originEl.remove(); }
-      if (piece.el) piece.el.remove();
-      piece.el = null;
-      this.returnToSlot(piece);
+      // Keep piece.el if it exists, animate it to slot
+      this.flyToSlot(piece);
       this.saveProgress();
       return;
     }
@@ -1263,11 +1452,10 @@ const Game = {
     }
   },
   lockPiece(piece, originEl) {
-    // 释放原来的槽位
     this.freeSlot(piece);
     if (originEl && originEl.parentNode) originEl.remove();
     if (piece.el && piece.el !== originEl) piece.el.remove();
-    const el = this.makePieceEl(piece, "locked snap-in");
+    const el = this.makePieceEl(piece, "locked lock-in");
     el.style.left = piece.correctX + "px";
     el.style.top = piece.correctY + "px";
     this.boardInner.appendChild(el);
@@ -1275,7 +1463,7 @@ const Game = {
     this.placedCount++;
     const slot = this.boardSvg.querySelector(`[data-slot-id="${piece.id}"]`);
     if (slot) slot.setAttribute("stroke", "rgba(127,127,127,0.08)");
-    // 当位置A被正确填充后，把漂浮在A附近的错误图块送回槽位
+    // 当位置A被正确填充后，把漂浮在A附近的错误图块送回槽位（带飞回动画）
     const threshold = this.hexW * 0.8;
     for (const p of this.pieceList) {
       if (p.status !== "placed_wrong") continue;
@@ -1283,8 +1471,7 @@ const Game = {
       const wrongCenterY = p.wrongY + this.metrics.hexH / 2;
       const dist = Math.hypot(wrongCenterX - piece.centerX, wrongCenterY - piece.centerY);
       if (dist < threshold) {
-        if (p.el) { p.el.remove(); p.el = null; }
-        this.returnToSlot(p);
+        this.flyToSlot(p);
       }
     }
     this.updateProgress();
@@ -1292,11 +1479,9 @@ const Game = {
     this.checkWin();
   },
   placeWrong(piece, lx, ly, originEl) {
-    // 释放原来的槽位
     this.freeSlot(piece);
     if (originEl && originEl.parentNode) originEl.remove();
     if (piece.el && piece.el !== originEl) piece.el.remove();
-    // 检查这个位置是否有其他图块（正确或错误），如果有就挤压回槽位
     const dropCenterX = lx, dropCenterY = ly;
     const pushThreshold = this.hexW * 0.5;
     for (const p of this.pieceList) {
@@ -1306,14 +1491,12 @@ const Game = {
         const pcy = p.wrongY + this.metrics.hexH / 2;
         const dist = Math.hypot(pcx - dropCenterX, pcy - dropCenterY);
         if (dist < pushThreshold) {
-          if (p.el) { p.el.remove(); p.el = null; }
-          this.returnToSlot(p);
+          this.flyToSlot(p);
         }
       } else if (p.status === "placed_correct") {
         const dist = Math.hypot(p.centerX - dropCenterX, p.centerY - dropCenterY);
         if (dist < pushThreshold) {
-          // 正确放置的图块不能被挤压，当前碎片回槽位
-          this.returnToSlot(piece);
+          this.flyToSlot(piece);
           this.saveProgress();
           return;
         }
