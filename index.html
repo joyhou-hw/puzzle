@@ -134,20 +134,19 @@
     cursor: grab; touch-action: none; user-select: none;
     clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
     transition: left 0.25s ease, top 0.25s ease;
-    will-change: transform, left, top;
   }
   .piece:active { cursor: grabbing; }
-  .piece.dragging { cursor: grabbing; z-index: 1000; transition: none; filter: drop-shadow(0 8px 16px rgba(0,0,0,0.4)); }
+  .piece.dragging { cursor: grabbing; z-index: 1000; transition: none; }
   .piece.locked { cursor: default; transition: left 0.2s ease, top 0.2s ease; }
   .piece.wrong {
-    filter: drop-shadow(0 0 0 2px #ff3333) drop-shadow(0 0 8px rgba(255,50,50,0.7));
+    outline: 2px solid rgba(255,50,50,0.7); outline-offset: -1px;
     animation: shake 0.3s;
   }
   @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-3px);} 75%{transform:translateX(3px);} }
   .piece.snap-in { animation: snap 0.25s ease; }
   @keyframes snap { 0%{transform:scale(1.08);} 100%{transform:scale(1);} }
   .piece.scattered {
-    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
   }
   .piece.fly-back {
     transition: left 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -156,9 +155,8 @@
     animation: lockIn 0.4s ease;
   }
   @keyframes lockIn {
-    0% { transform: scale(1.15); filter: brightness(1.5) drop-shadow(0 0 12px rgba(15,220,120,0.8)); }
-    50% { transform: scale(0.95); filter: brightness(1.2) drop-shadow(0 0 8px rgba(15,220,120,0.5)); }
-    100% { transform: scale(1); filter: none; }
+    0% { transform: scale(1.1); }
+    100% { transform: scale(1); }
   }
   .slot-mark {
     position: absolute; pointer-events: none;
@@ -167,12 +165,11 @@
   }
   /* Slot highlight for drag target hint (red - shows where piece will land) */
   .slot-highlight {
-    fill: rgba(255,80,80,0.12) !important;
-    stroke: rgba(255,80,80,0.5) !important;
+    fill: rgba(255,80,80,0.15) !important;
+    stroke: rgba(255,80,80,0.6) !important;
     stroke-width: 2 !important;
     stroke-dasharray: none !important;
-    filter: drop-shadow(0 0 6px rgba(255,80,80,0.4));
-    transition: opacity 0.4s ease;
+    transition: opacity 0.3s ease;
   }
   .slot-highlight.fading {
     opacity: 0;
@@ -183,6 +180,56 @@
     box-shadow: 0 0 20px rgba(15,220,120,0.15), inset 0 0 20px rgba(15,220,120,0.05);
     border-radius: 8px;
   }
+
+  /* ===== Phone mode: bottom piece pool ===== */
+  .pool-footer {
+    flex: 0 0 auto; display: none; flex-direction: column;
+    background: var(--surface); border-top: 1px solid var(--border);
+    max-height: 200px;
+  }
+  .pool-footer.show { display: flex; }
+  .pool-header {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 8px; font-size: 11px; color: var(--text-muted);
+  }
+  .pool-body {
+    flex: 1 1 auto; overflow-y: auto; overflow-x: hidden;
+    padding: 4px 8px;
+    display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start;
+  }
+  .pool-body::-webkit-scrollbar { width: 6px; }
+  .pool-body::-webkit-scrollbar-track { background: transparent; }
+  .pool-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .pool-piece {
+    flex: 0 0 auto; position: relative;
+    background-repeat: no-repeat; cursor: grab; touch-action: none; user-select: none;
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    transition: transform 0.15s;
+  }
+  .pool-piece:active { cursor: grabbing; transform: scale(1.05); }
+  .pool-expand-btn {
+    flex: 0 0 auto; padding: 2px 8px; border: none; background: var(--surface-muted);
+    color: var(--text-muted); font-size: 10px; cursor: pointer; border-radius: 4px;
+  }
+  /* Phone mode: board takes more space, pool at bottom */
+  body.layout-phone .board-area { flex: 1 1 auto; }
+  /* Tablet mode: no pool, pieces scattered on canvas */
+  body.layout-tablet .pool-footer { display: none !important; }
+  /* Layout mode selector on difficulty page */
+  .layout-mode-selector {
+    flex: 0 0 auto; display: flex; gap: 8px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .layout-mode-card {
+    flex: 1 1 0; padding: 12px; border: 2px solid var(--border); border-radius: var(--radius-card);
+    cursor: pointer; text-align: center; transition: border-color 0.15s, background 0.15s;
+    background: var(--surface);
+  }
+  .layout-mode-card.active { border-color: var(--brand); background: var(--brand-soft); }
+  .layout-mode-card .lm-icon { font-size: 24px; margin-bottom: 4px; }
+  .layout-mode-card .lm-label { font-size: 14px; font-weight: 600; }
+  .layout-mode-card .lm-desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
   .modal-mask {
     position: fixed; inset: 0; background: rgba(0,0,0,0.6);
     display: flex; align-items: center; justify-content: center;
@@ -492,6 +539,18 @@
       <h2 id="modeLevelName">选择模式</h2>
       <p class="sub" id="modeSubText"></p>
     </div>
+    <div class="layout-mode-selector" id="layoutModeSelector">
+      <div class="layout-mode-card" data-layout="phone" id="lmPhone">
+        <div class="lm-icon">📱</div>
+        <div class="lm-label">手机模式</div>
+        <div class="lm-desc">碎片在底部抽屉</div>
+      </div>
+      <div class="layout-mode-card" data-layout="tablet" id="lmTablet">
+        <div class="lm-icon">📋</div>
+        <div class="lm-label">平板模式</div>
+        <div class="lm-desc">碎片散落画布</div>
+      </div>
+    </div>
     <div class="mode-grid" id="modeGrid"></div>
   </main>
   <main class="view view-game" id="viewGame">
@@ -504,7 +563,13 @@
         </div>
       </div>
     </div>
-
+    <div class="pool-footer" id="poolFooter">
+      <div class="pool-header">
+        <span id="poolCount">0 块</span>
+        <button class="pool-expand-btn" id="poolExpandBtn">展开</button>
+      </div>
+      <div class="pool-body" id="poolBody"></div>
+    </div>
   </main>
   <main class="view view-gallery" id="viewGallery">
     <div class="gallery-header">
@@ -823,6 +888,9 @@ const Game = {
   boardScale: 1, boardOffsetX: 0, boardOffsetY: 0,
   boardArea: null, board: null, boardInner: null, boardBgImg: null, boardBgSvg: null, boardSvg: null,
   _isGesturing: false,
+  layoutMode: "phone",
+  poolFooter: null, poolBody: null, poolOrder: [], poolExpanded: false,
+  _highlightThrottle: 0,
   init() {
     this.boardArea = $("boardArea");
     this.board = $("board");
@@ -830,6 +898,8 @@ const Game = {
     this.boardBgImg = $("boardBgImg");
     this.boardBgSvg = $("boardBgSvg");
     this.boardSvg = $("boardSvg");
+    this.poolFooter = $("poolFooter");
+    this.poolBody = $("poolBody");
     $("refreshBtn").addEventListener("click", () => this.refreshLevel());
     $("nextLevelBtn").addEventListener("click", () => this.nextLevel());
     $("replayBtn").addEventListener("click", () => { $("winModal").classList.remove("show"); $("reveal").classList.add("show"); });
@@ -868,12 +938,20 @@ const Game = {
     $("loadProgressBtn").addEventListener("click", () => this.loadProgress(true));
     $("clearProgressBtn").addEventListener("click", () => ProgressManager.clearCurrent());
     $("backToLevelsBtn").addEventListener("click", () => Router.go("/levels"));
+    $("poolExpandBtn").addEventListener("click", () => {
+      this.poolExpanded = !this.poolExpanded;
+      $("poolExpandBtn").textContent = this.poolExpanded ? "收起" : "展开";
+      this.poolFooter.style.maxHeight = this.poolExpanded ? "40vh" : "200px";
+    });
     $("backLevelsBtn").addEventListener("click", () => {
       $("winModal").classList.remove("show");
       Router.go("/levels");
     });
     this.bindBoardGestures();
-    window.addEventListener("resize", () => this.layoutBoard());
+    window.addEventListener("resize", () => {
+      if (this.layoutMode === "phone") { this.layoutBoardPhone(); this.renderPool(); }
+      else this.layoutBoard();
+    });
     this.currentLevelId = 1;
     this.currentMode = "easy";
     Router.init();
@@ -885,6 +963,7 @@ const Game = {
   startGame(levelId, mode) {
     this.currentLevelId = levelId;
     this.currentMode = mode;
+    this.layoutMode = ModePage.selectedLayout || "phone";
     const lv = findLevelById(levelId);
     if (!lv) return;
     Router.go("/game");
@@ -932,8 +1011,13 @@ const Game = {
       this.imgDataURL = this.imgCanvas.toDataURL("image/jpeg", 0.85);
       this.imgSrcLabel = srcLabel;
       this.buildPieces();
-      this.layoutBoard();
-      this.scatterPieces();
+      if (this.layoutMode === "tablet") {
+        this.layoutBoard();
+        this.scatterPieces();
+      } else {
+        this.layoutBoardPhone();
+        this.dealAllPieces();
+      }
       this.updateProgress();
       ProgressManager.updateSubTitle();
       $("loading").classList.remove("show");
@@ -955,7 +1039,7 @@ const Game = {
   buildPieces() {
     this.pieces = {}; this.pieceList = [];
     this.scatterSlots = []; this.availableSlots = []; this.slotMap = {};
-    this.placedCount = 0; this.moves = 0; this.startTime = Date.now();
+    this.poolOrder = []; this.placedCount = 0; this.moves = 0; this.startTime = Date.now();
     for (let r = 0; r < this.level.rows; r++) {
       for (let c = 0; c < this.level.cols; c++) {
         const ctr = Hex.center(c, r, this.metrics);
@@ -965,7 +1049,7 @@ const Game = {
           correctX: Math.round(ctr.x - this.hexW / 2),
           correctY: Math.round(ctr.y - this.metrics.hexH / 2),
           centerX: ctr.x, centerY: ctr.y,
-          status: "scattered", el: null, slotIndex: -1,
+          status: this.layoutMode === "phone" ? "pooled" : "scattered", el: null, slotIndex: -1,
           wrongX: 0, wrongY: 0,
         };
         this.pieces[id] = p;
@@ -990,6 +1074,15 @@ const Game = {
     glow.style.height = (this.totalH + 8) + "px";
     this.boardInner.appendChild(glow);
     this.renderSlots();
+    if (this.layoutMode === "phone") {
+      this.poolFooter.classList.add("show");
+      document.body.classList.add("layout-phone");
+      document.body.classList.remove("layout-tablet");
+    } else {
+      this.poolFooter.classList.remove("show");
+      document.body.classList.add("layout-tablet");
+      document.body.classList.remove("layout-phone");
+    }
     this.startTimer();
     try {
       localStorage.setItem("puzzle_current_v4", JSON.stringify({
@@ -1180,6 +1273,337 @@ const Game = {
     }
     this.scatterSlots = slots.slice(0, numPieces);
   },
+
+  layoutBoardPhone() {
+    const aw = this.boardArea.clientWidth, ah = this.boardArea.clientHeight;
+    if (!aw || !ah) return;
+    // Phone mode: board only contains the puzzle, no scatter area
+    const sx = aw / this.totalW;
+    const sy = ah / this.totalH;
+    const s = Math.min(sx, sy) * 0.92;
+    this.boardScale = s;
+    this.boardOffsetX = (aw - this.totalW * s) / 2;
+    this.boardOffsetY = (ah - this.totalH * s) / 2;
+    this.applyBoardTransform();
+  },
+  dealAllPieces() {
+    // Deal all pieces into the pool at once (shuffled once)
+    this.poolOrder = shuffle(this.pieceList.filter(p => p.status === "scattered" || p.status === "pooled").map(p => p.id));
+    this.renderPool();
+  },
+  renderPool() {
+    if (!this.poolBody) return;
+    this.poolBody.innerHTML = "";
+    const poolW = this.poolBody.clientWidth || 360;
+    const pieceScreenW = this.hexW * this.boardScale;
+    const cols = Math.max(1, Math.floor(poolW / (pieceScreenW + 4)));
+    const pieceW = Math.floor((poolW - 4 - cols * 4) / cols);
+    const pieceH = Math.round(pieceW * SQRT3 / 2);
+    let count = 0;
+    for (const id of this.poolOrder) {
+      const p = this.pieces[id];
+      if (!p || p.status !== "pooled") continue;
+      const el = document.createElement("div");
+      el.className = "pool-piece";
+      el.style.width = pieceW + "px";
+      el.style.height = pieceH + "px";
+      el.style.backgroundImage = `url(${this.imgDataURL})`;
+      el.style.backgroundSize = `${this.totalW * (pieceW / this.hexW)}px ${this.totalH * (pieceH / this.metrics.hexH)}px`;
+      el.style.backgroundPosition = `-${p.correctX * (pieceW / this.hexW)}px -${p.correctY * (pieceH / this.metrics.hexH)}px`;
+      p._poolW = pieceW; p._poolH = pieceH;
+      this.bindPoolDrag(el, p);
+      this.poolBody.appendChild(el);
+      p.el = el;
+      count++;
+    }
+    $("poolCount").textContent = count + " 块";
+  },
+  bindPoolDrag(el, piece) {
+    let dragging = false, ghostEl = null, pointerId = null;
+    let prevHighlight = null;
+    const clearHighlight = (fade = false) => {
+      if (prevHighlight) {
+        if (fade) {
+          prevHighlight.classList.add("fading");
+          const h = prevHighlight;
+          setTimeout(() => { h.classList.remove("slot-highlight", "fading"); }, 300);
+        } else {
+          prevHighlight.classList.remove("slot-highlight", "fading");
+        }
+        prevHighlight = null;
+      }
+    };
+    el.addEventListener("pointerdown", (e) => {
+      if (piece.status !== "pooled") return;
+      if (this._isGesturing) return;
+      e.preventDefault(); e.stopPropagation();
+      pointerId = e.pointerId;
+      try { el.setPointerCapture(pointerId); } catch(_) {}
+      dragging = true;
+      const ghostW = this.hexW * this.boardScale;
+      const ghostH = this.metrics.hexH * this.boardScale;
+      const sr = this.boardScale;
+      ghostEl = document.createElement("div");
+      ghostEl.className = "piece dragging";
+      ghostEl.style.width = ghostW + "px";
+      ghostEl.style.height = ghostH + "px";
+      ghostEl.style.backgroundImage = `url(${this.imgDataURL})`;
+      ghostEl.style.backgroundSize = `${this.totalW * sr}px ${this.totalH * sr}px`;
+      ghostEl.style.backgroundPosition = `-${piece.correctX * sr}px -${piece.correctY * sr}px`;
+      ghostEl.style.clipPath = "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)";
+      ghostEl.style.position = "fixed";
+      ghostEl.style.left = (e.clientX - ghostW / 2) + "px";
+      ghostEl.style.top = (e.clientY - ghostH / 2) + "px";
+      ghostEl.style.zIndex = "1000";
+      ghostEl.style.pointerEvents = "none";
+      document.body.appendChild(ghostEl);
+      el.style.opacity = "0.2";
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!dragging || e.pointerId !== pointerId) return;
+      if (this._isGesturing) {
+        dragging = false;
+        try { el.releasePointerCapture(pointerId); } catch(_) {}
+        el.style.opacity = "1";
+        if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+        clearHighlight(true);
+        return;
+      }
+      // Throttle highlight check to every 3rd move event
+      this._highlightThrottle++;
+      const ghostW = ghostEl.offsetWidth, ghostH = ghostEl.offsetHeight;
+      ghostEl.style.left = (e.clientX - ghostW / 2) + "px";
+      ghostEl.style.top = (e.clientY - ghostH / 2) + "px";
+      if (this._highlightThrottle % 3 !== 0) return;
+      const boardRect = this.boardInner.getBoundingClientRect();
+      const cx = e.clientX, cy = e.clientY;
+      const inside = cx >= boardRect.left && cx <= boardRect.right && cy >= boardRect.top && cy <= boardRect.bottom;
+      if (inside) {
+        const lx = (cx - boardRect.left) / this.boardScale;
+        const ly = (cy - boardRect.top) / this.boardScale;
+        let nearest = null, minD = Infinity;
+        for (const p of this.pieceList) {
+          const d = Math.hypot(lx - p.centerX, ly - p.centerY);
+          if (d < minD) { minD = d; nearest = p; }
+        }
+        const tol = this.hexW * 0.55;
+        const slotEl = nearest ? this.boardSvg.querySelector(`[data-slot-id="${nearest.id}"]`) : null;
+        if (prevHighlight && prevHighlight !== slotEl) clearHighlight(true);
+        if (slotEl && minD <= tol && !slotEl.classList.contains("slot-highlight")) {
+          slotEl.classList.remove("fading");
+          slotEl.classList.add("slot-highlight");
+          prevHighlight = slotEl;
+        }
+      } else {
+        clearHighlight(true);
+      }
+    });
+    const endPoolDrag = (e) => {
+      if (!dragging || e.pointerId !== pointerId) return;
+      dragging = false;
+      try { el.releasePointerCapture(pointerId); } catch(_) {}
+      el.style.opacity = "1";
+      clearHighlight(true);
+      const gr = ghostEl.getBoundingClientRect();
+      ghostEl.remove(); ghostEl = null;
+      this.handleDropPhone(piece, gr.left + gr.width / 2, gr.top + gr.height / 2, el);
+    };
+    el.addEventListener("pointerup", endPoolDrag);
+    el.addEventListener("pointercancel", endPoolDrag);
+  },
+  handleDropPhone(piece, clientX, clientY, originEl) {
+    this.moves++;
+    const boardRect = this.boardInner.getBoundingClientRect();
+    const insidePuzzle = clientX >= boardRect.left && clientX <= boardRect.right && clientY >= boardRect.top && clientY <= boardRect.bottom;
+    if (!insidePuzzle) {
+      // Return to pool
+      if (originEl) originEl.style.opacity = "1";
+      piece.status = "pooled";
+      this.saveProgress();
+      return;
+    }
+    const lx = (clientX - boardRect.left) / this.boardScale;
+    const ly = (clientY - boardRect.top) / this.boardScale;
+    let nearest = null, minD = Infinity;
+    for (const p of this.pieceList) {
+      const d = Math.hypot(lx - p.centerX, ly - p.centerY);
+      if (d < minD) { minD = d; nearest = p; }
+    }
+    const tol = this.hexW * 0.55;
+    if (nearest && nearest.id === piece.id && minD <= tol) {
+      this.lockPiecePhone(piece, originEl);
+    } else {
+      this.placeWrongPhone(piece, lx, ly, originEl);
+    }
+  },
+  lockPiecePhone(piece, originEl) {
+    // Remove from pool
+    const idx = this.poolOrder.indexOf(piece.id);
+    if (idx >= 0) this.poolOrder.splice(idx, 1);
+    if (originEl) originEl.remove();
+    piece.status = "placed_correct";
+    this.placedCount++;
+    // Create locked piece element on board
+    const el = this.makePieceEl(piece, "locked lock-in");
+    el.style.left = piece.correctX + "px";
+    el.style.top = piece.correctY + "px";
+    this.boardInner.appendChild(el);
+    piece.el = el;
+    const slot = this.boardSvg.querySelector(`[data-slot-id="${piece.id}"]`);
+    if (slot) slot.setAttribute("stroke", "rgba(127,127,127,0.08)");
+    // Fly nearby wrong pieces back to pool
+    const threshold = this.hexW * 0.8;
+    for (const p of this.pieceList) {
+      if (p.status !== "placed_wrong") continue;
+      const wrongCenterX = p.wrongX + this.hexW / 2;
+      const wrongCenterY = p.wrongY + this.metrics.hexH / 2;
+      const dist = Math.hypot(wrongCenterX - piece.centerX, wrongCenterY - piece.centerY);
+      if (dist < threshold) {
+        this.returnToPoolPhone(p);
+      }
+    }
+    this.renderPool();
+    this.updateProgress();
+    this.saveProgress();
+    this.checkWin();
+  },
+  placeWrongPhone(piece, lx, ly, originEl) {
+    // Remove from pool
+    const idx = this.poolOrder.indexOf(piece.id);
+    if (idx >= 0) this.poolOrder.splice(idx, 1);
+    if (originEl) originEl.remove();
+    const dropCenterX = lx, dropCenterY = ly;
+    const pushThreshold = this.hexW * 0.5;
+    for (const p of this.pieceList) {
+      if (p === piece) continue;
+      if (p.status === "placed_wrong") {
+        const pcx = p.wrongX + this.hexW / 2;
+        const pcy = p.wrongY + this.metrics.hexH / 2;
+        const dist = Math.hypot(pcx - dropCenterX, pcy - dropCenterY);
+        if (dist < pushThreshold) {
+          this.returnToPoolPhone(p);
+        }
+      } else if (p.status === "placed_correct") {
+        const dist = Math.hypot(p.centerX - dropCenterX, p.centerY - dropCenterY);
+        if (dist < pushThreshold) {
+          this.returnToPoolPhone(piece);
+          this.renderPool();
+          this.saveProgress();
+          return;
+        }
+      }
+    }
+    const el = this.makePieceEl(piece, "wrong");
+    el.style.left = (lx - this.hexW / 2) + "px";
+    el.style.top = (ly - this.metrics.hexH / 2) + "px";
+    this.boardInner.appendChild(el);
+    piece.el = el; piece.status = "placed_wrong";
+    piece.wrongX = lx - this.hexW / 2; piece.wrongY = ly - this.metrics.hexH / 2;
+    this.bindBoardPieceDrag(el, piece);
+    this.renderPool();
+    this.saveProgress();
+  },
+  returnToPoolPhone(piece) {
+    if (piece.el) { piece.el.remove(); piece.el = null; }
+    piece.status = "pooled";
+    piece.wrongX = 0; piece.wrongY = 0;
+    if (!this.poolOrder.includes(piece.id)) {
+      this.poolOrder.push(piece.id);
+    }
+  },
+  bindBoardPieceDrag(el, piece) {
+    // For dragging wrong-placed pieces on board (phone mode)
+    let dragging = false, ghostEl = null, pointerId = null;
+    let prevHighlight = null;
+    const clearHighlight = (fade = false) => {
+      if (prevHighlight) {
+        if (fade) {
+          prevHighlight.classList.add("fading");
+          const h = prevHighlight;
+          setTimeout(() => { h.classList.remove("slot-highlight", "fading"); }, 300);
+        } else {
+          prevHighlight.classList.remove("slot-highlight", "fading");
+        }
+        prevHighlight = null;
+      }
+    };
+    el.addEventListener("pointerdown", (e) => {
+      if (piece.status === "placed_correct") return;
+      if (this._isGesturing) return;
+      e.preventDefault(); e.stopPropagation();
+      pointerId = e.pointerId;
+      try { el.setPointerCapture(pointerId); } catch(_) {}
+      dragging = true;
+      const ghostW = this.hexW * this.boardScale;
+      const ghostH = this.metrics.hexH * this.boardScale;
+      const sr = this.boardScale;
+      ghostEl = document.createElement("div");
+      ghostEl.className = "piece dragging";
+      ghostEl.style.width = ghostW + "px";
+      ghostEl.style.height = ghostH + "px";
+      ghostEl.style.backgroundImage = `url(${this.imgDataURL})`;
+      ghostEl.style.backgroundSize = `${this.totalW * sr}px ${this.totalH * sr}px`;
+      ghostEl.style.backgroundPosition = `-${piece.correctX * sr}px -${piece.correctY * sr}px`;
+      ghostEl.style.clipPath = "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)";
+      ghostEl.style.position = "fixed";
+      ghostEl.style.left = (e.clientX - ghostW / 2) + "px";
+      ghostEl.style.top = (e.clientY - ghostH / 2) + "px";
+      ghostEl.style.zIndex = "1000";
+      ghostEl.style.pointerEvents = "none";
+      document.body.appendChild(ghostEl);
+      el.style.opacity = "0.15";
+    });
+    el.addEventListener("pointermove", (e) => {
+      if (!dragging || e.pointerId !== pointerId) return;
+      if (this._isGesturing) {
+        dragging = false;
+        try { el.releasePointerCapture(pointerId); } catch(_) {}
+        el.style.opacity = "1";
+        if (ghostEl) { ghostEl.remove(); ghostEl = null; }
+        clearHighlight(true);
+        return;
+      }
+      this._highlightThrottle++;
+      const ghostW = ghostEl.offsetWidth, ghostH = ghostEl.offsetHeight;
+      ghostEl.style.left = (e.clientX - ghostW / 2) + "px";
+      ghostEl.style.top = (e.clientY - ghostH / 2) + "px";
+      if (this._highlightThrottle % 3 !== 0) return;
+      const boardRect = this.boardInner.getBoundingClientRect();
+      const cx = e.clientX, cy = e.clientY;
+      const inside = cx >= boardRect.left && cx <= boardRect.right && cy >= boardRect.top && cy <= boardRect.bottom;
+      if (inside) {
+        const lx = (cx - boardRect.left) / this.boardScale;
+        const ly = (cy - boardRect.top) / this.boardScale;
+        let nearest = null, minD = Infinity;
+        for (const p of this.pieceList) {
+          const d = Math.hypot(lx - p.centerX, ly - p.centerY);
+          if (d < minD) { minD = d; nearest = p; }
+        }
+        const tol = this.hexW * 0.55;
+        const slotEl = nearest ? this.boardSvg.querySelector(`[data-slot-id="${nearest.id}"]`) : null;
+        if (prevHighlight && prevHighlight !== slotEl) clearHighlight(true);
+        if (slotEl && minD <= tol && !slotEl.classList.contains("slot-highlight")) {
+          slotEl.classList.remove("fading");
+          slotEl.classList.add("slot-highlight");
+          prevHighlight = slotEl;
+        }
+      } else {
+        clearHighlight(true);
+      }
+    });
+    const endBoardDrag = (e) => {
+      if (!dragging || e.pointerId !== pointerId) return;
+      dragging = false;
+      try { el.releasePointerCapture(pointerId); } catch(_) {}
+      el.style.opacity = "1";
+      clearHighlight(true);
+      const gr = ghostEl.getBoundingClientRect();
+      ghostEl.remove(); ghostEl = null;
+      this.handleDropPhone(piece, gr.left + gr.width / 2, gr.top + gr.height / 2, el);
+    };
+    el.addEventListener("pointerup", endBoardDrag);
+    el.addEventListener("pointercancel", endBoardDrag);
+  },
   layoutBoard() {
     const aw = this.boardArea.clientWidth, ah = this.boardArea.clientHeight;
     if (!aw || !ah) return;
@@ -1197,7 +1621,8 @@ const Game = {
     this.board.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.boardScale})`;
   },
   onEnterGame() {
-    this.layoutBoard();
+    if (this.layoutMode === "phone") this.layoutBoardPhone();
+    else this.layoutBoard();
     ProgressManager.updateSubTitle();
   },
   scatterPieces() {
@@ -1206,6 +1631,8 @@ const Game = {
     this.availableSlots = this.scatterSlots.map((s, i) => i);
     this.slotMap = {};
     const scattered = shuffle(this.pieceList.filter(p => p.status === "scattered" || p.status === "pooled"));
+    // Mark all as scattered for tablet mode
+    scattered.forEach(p => { p.status = "scattered"; });
     for (const p of scattered) {
       if (this.availableSlots.length === 0) break;
       const slotIdx = this.availableSlots.pop();
@@ -1316,13 +1743,22 @@ const Game = {
     }
   },
   refreshLevel() {
-    // 重置：游离的图块放回槽位，已正确放置的保留
-    this.pieceList.forEach(p => {
-      if (p.status === "placed_wrong") {
-        this.freeSlot(p);
-        this.flyToSlot(p);
-      }
-    });
+    // 重置：游离的图块放回，已正确放置的保留
+    if (this.layoutMode === "phone") {
+      this.pieceList.forEach(p => {
+        if (p.status === "placed_wrong") {
+          this.returnToPoolPhone(p);
+        }
+      });
+      this.renderPool();
+    } else {
+      this.pieceList.forEach(p => {
+        if (p.status === "placed_wrong") {
+          this.freeSlot(p);
+          this.flyToSlot(p);
+        }
+      });
+    }
     this.saveProgress();
     toast("已重置碎片");
   },
@@ -1385,6 +1821,9 @@ const Game = {
       const ghostW = ghostEl.offsetWidth, ghostH = ghostEl.offsetHeight;
       ghostEl.style.left = (e.clientX - ghostW / 2) + "px";
       ghostEl.style.top = (e.clientY - ghostH / 2) + "px";
+      // Throttle highlight check to every 3rd move event
+      this._highlightThrottle++;
+      if (this._highlightThrottle % 3 !== 0) return;
       // Target hint: highlight nearest slot (any slot, not just correct)
       const boardRect = this.boardInner.getBoundingClientRect();
       const cx = e.clientX, cy = e.clientY;
@@ -1582,6 +2021,7 @@ const Game = {
       if (p.status === "placed_correct") snap.placedCorrect.push(p.id);
       else if (p.status === "placed_wrong") snap.placedWrong.push({ id: p.id, x: p.wrongX, y: p.wrongY });
     });
+    snap.layoutMode = this.layoutMode;
     try {
       localStorage.setItem(`puzzle_progress_v4_${this.level.id}_${this.currentMode}`, JSON.stringify(snap));
     } catch(e) {}
@@ -1642,7 +2082,19 @@ const Game = {
       this.bindDrag(el, p);
     }
     // 散落剩余碎片
-    this.scatterPieces();
+    if (this.layoutMode === "phone") {
+      // Reset pooled pieces
+      this.pieceList.forEach(p => {
+        if (p.status === "scattered" || p.status === "pooled") {
+          p.status = "pooled";
+          if (p.el) { p.el.remove(); p.el = null; }
+        }
+      });
+      this.poolOrder = shuffle(this.pieceList.filter(p => p.status === "pooled").map(p => p.id));
+      this.renderPool();
+    } else {
+      this.scatterPieces();
+    }
     this.updateProgress();
     if (manual) toast("存档已加载");
     return true;
@@ -1898,12 +2350,32 @@ const LevelsPage = {
   },
 };
 const ModePage = {
+  selectedLayout: "phone",
+  init() {
+    $("lmPhone").addEventListener("click", () => this.setLayout("phone"));
+    $("lmTablet").addEventListener("click", () => this.setLayout("tablet"));
+    // Restore from localStorage
+    try {
+      const saved = localStorage.getItem("puzzle_layout_mode");
+      if (saved === "tablet" || saved === "phone") this.selectedLayout = saved;
+    } catch(e) {}
+  },
+  setLayout(mode) {
+    this.selectedLayout = mode;
+    try { localStorage.setItem("puzzle_layout_mode", mode); } catch(e) {}
+    this.updateLayoutUI();
+  },
+  updateLayoutUI() {
+    $("lmPhone").classList.toggle("active", this.selectedLayout === "phone");
+    $("lmTablet").classList.toggle("active", this.selectedLayout === "tablet");
+  },
   render() {
     const lv = findLevelById(Game.pendingLevelId || Game.currentLevelId);
     if (!lv) { Router.go("/levels"); return; }
     $("modeLevelName").textContent = `${lv.name} · 选择模式`;
     const clearedN = getClearedCount(lv.id);
     $("modeSubText").textContent = clearedN > 0 ? `已通关 ${clearedN}/${MODES.length} 模式` : "选择一个模式开始挑战";
+    this.updateLayoutUI();
     const grid = $("modeGrid");
     grid.innerHTML = "";
     for (const m of MODES) {
@@ -2129,7 +2601,7 @@ const ProgressManager = {
     if (!Game.level) { toast("尚未开始游戏"); return; }
     if (!confirm(`确认清除「${Game.level.name} · ${DIFFICULTIES[Game.currentMode].label}」的存档并重置？`)) return;
     try { localStorage.removeItem(`puzzle_progress_v4_${Game.level.id}_${Game.currentMode}`); } catch(e) {}
-    Game.loadLevel(Game.level, Game.currentMode);
+    Game.loadLevel(Game.level, Game.currentMode, false, true);
     toast("已清除存档");
     this.render();
   },
@@ -2141,6 +2613,7 @@ const ProgressManager = {
   },
 };
 
+ModePage.init();
 document.addEventListener("DOMContentLoaded", () => Game.init());
 </script>
 </body>
