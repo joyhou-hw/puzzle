@@ -1392,10 +1392,11 @@ const Game = {
     const gap = 4;
     // Piece size based on board scale
     const pieceScreenW = this.hexW * this.boardScale;
-    const cols = Math.max(1, Math.floor((poolW + gap) / (pieceScreenW + gap)));
-    const pieceW = Math.floor((poolW - gap - cols * gap) / cols);
+    const colsPerPage = Math.max(1, Math.floor((poolW + gap) / (pieceScreenW + gap)));
+    const pieceW = Math.floor((poolW - gap - colsPerPage * gap) / colsPerPage);
     const pieceH = Math.round(pieceW * SQRT3 / 2);
     const rows = Math.max(1, Math.floor((poolH - gap) / (pieceH + gap)));
+    const itemsPerPage = colsPerPage * rows;
     // Use a wrapper div with absolute positioning for multi-row horizontal layout
     const wrapper = document.createElement("div");
     wrapper.style.position = "relative";
@@ -1411,10 +1412,9 @@ const Game = {
       el.style.position = "absolute";
       el.style.width = pieceW + "px";
       el.style.height = pieceH + "px";
-      // Calculate position: items fill rows*cols grid, then expand horizontally
-      const idx = count;
-      const col = idx % cols;
-      const row = Math.floor(idx / cols) % rows;
+      // Column-major layout: fill rows first, then move to next column
+      const col = Math.floor(count / rows);
+      const row = count % rows;
       const x = col * (pieceW + gap);
       const y = row * (pieceH + gap);
       el.style.left = x + "px";
@@ -1428,7 +1428,7 @@ const Game = {
       p.el = el;
       count++;
     }
-    // Set wrapper width to contain all items
+    // Set wrapper size: total columns = ceil(count / rows)
     const totalCols = Math.ceil(count / rows);
     wrapper.style.width = (totalCols * (pieceW + gap) + gap) + "px";
     wrapper.style.height = (rows * (pieceH + gap) + gap) + "px";
