@@ -7,23 +7,14 @@
 <title>六边形拼图 · v3</title>
 <style>
   :root {
-    color-scheme: light;
-    --bg: #f5f6f8; --surface: #ffffff; --surface-muted: #eef0f3;
-    --text: #171717; --text-muted: #52525b; --border: rgba(23,23,23,0.10);
-    --brand: #0fdc78; --brand-soft: #e5fff2; --brand-text: #004d26;
-    --danger: #e8463a; --warning: #efaa17;
-    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+    color-scheme: dark;
+    --bg: #12141a; --surface: #1a1d24; --surface-muted: #23272d;
+    --text: #e5e5e5; --text-muted: #9ca3af; --border: rgba(229,229,229,0.10);
+    --brand: #0fdc78; --brand-soft: rgba(15,220,120,0.08); --brand-text: #e5fff2;
+    --danger: #ff6b5e; --warning: #efaa17;
+    --shadow: 0 2px 12px rgba(0,0,0,0.4);
     --radius: 8px; --radius-card: 12px;
     --font-sans: -apple-system, "SF Pro Text", "PingFang SC", system-ui, "Segoe UI", Roboto, sans-serif;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      color-scheme: dark;
-      --bg: #0f1216; --surface: #1a1d22; --surface-muted: #23272d;
-      --text: #e5e5e5; --text-muted: #a1a1aa; --border: rgba(229,229,229,0.12);
-      --brand: #32f08c; --brand-soft: #004d26; --brand-text: #e5fff2;
-      --shadow: 0 2px 12px rgba(0,0,0,0.4);
-    }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
