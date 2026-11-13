@@ -184,33 +184,75 @@
   /* ===== Phone mode: bottom piece pool ===== */
   .pool-footer {
     flex: 0 0 auto; display: none; flex-direction: column;
-    background: var(--surface); border-top: 1px solid var(--border);
-    max-height: 200px;
+    background: linear-gradient(180deg, #1e2228 0%, #171a1f 100%);
+    border-top: 1px solid rgba(15,220,120,0.15);
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.3);
+    height: 160px;
+    min-height: 80px;
+    max-height: 50vh;
+    transition: height 0.05s linear;
   }
   .pool-footer.show { display: flex; }
-  .pool-header {
-    flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
-    padding: 4px 8px; font-size: 11px; color: var(--text-muted);
+  .pool-footer.dragging { transition: none; }
+  /* Drag handle */
+  .pool-handle {
+    flex: 0 0 auto; height: 28px; display: flex; align-items: center; justify-content: center;
+    cursor: ns-resize; touch-action: none; user-select: none;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    position: relative;
+  }
+  .pool-handle::before {
+    content: ''; width: 40px; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.2); transition: background 0.15s;
+  }
+  .pool-handle:active::before { background: rgba(15,220,120,0.6); }
+  .pool-handle .pool-count {
+    position: absolute; right: 12px; font-size: 11px; color: rgba(255,255,255,0.4);
+    font-variant-numeric: tabular-nums;
+  }
+  /* Pool content area */
+  .pool-content {
+    flex: 1 1 auto; display: flex; overflow: hidden; min-height: 0;
   }
   .pool-body {
     flex: 1 1 auto; overflow-y: auto; overflow-x: hidden;
-    padding: 4px 8px;
+    padding: 6px 4px 6px 8px;
     display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start;
+    scrollbar-width: none;
   }
-  .pool-body::-webkit-scrollbar { width: 6px; }
-  .pool-body::-webkit-scrollbar-track { background: transparent; }
-  .pool-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .pool-body::-webkit-scrollbar { width: 0; display: none; }
   .pool-piece {
     flex: 0 0 auto; position: relative;
     background-repeat: no-repeat; cursor: grab; touch-action: none; user-select: none;
     clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-    transition: transform 0.15s;
+    transition: transform 0.12s;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
   }
-  .pool-piece:active { cursor: grabbing; transform: scale(1.05); }
-  .pool-expand-btn {
-    flex: 0 0 auto; padding: 2px 8px; border: none; background: var(--surface-muted);
-    color: var(--text-muted); font-size: 10px; cursor: pointer; border-radius: 4px;
+  .pool-piece:active { cursor: grabbing; transform: scale(1.08); }
+  /* Custom scrollbar track on right side */
+  .pool-scrollbar {
+    flex: 0 0 auto; width: 28px; display: flex; flex-direction: column;
+    background: rgba(0,0,0,0.2); border-left: 1px solid rgba(255,255,255,0.05);
   }
+  .pool-scroll-btn {
+    flex: 0 0 auto; height: 28px; display: flex; align-items: center; justify-content: center;
+    border: none; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4);
+    cursor: pointer; font-size: 12px; transition: background 0.15s, color 0.15s;
+  }
+  .pool-scroll-btn:hover { background: rgba(15,220,120,0.12); color: rgba(15,220,120,0.8); }
+  .pool-scroll-btn:active { background: rgba(15,220,120,0.2); }
+  .pool-scroll-track {
+    flex: 1 1 auto; position: relative; background: rgba(0,0,0,0.15);
+    cursor: pointer; touch-action: none;
+  }
+  .pool-scroll-thumb {
+    position: absolute; left: 4px; right: 4px; top: 0; height: 30px;
+    background: rgba(15,220,120,0.3); border-radius: 4px;
+    transition: background 0.15s; cursor: grab; touch-action: none;
+  }
+  .pool-scroll-thumb:hover { background: rgba(15,220,120,0.5); }
+  .pool-scroll-thumb:active { background: rgba(15,220,120,0.7); cursor: grabbing; }
   /* Phone mode: board takes more space, pool at bottom */
   body.layout-phone .board-area { flex: 1 1 auto; }
   /* Tablet mode: no pool, pieces scattered on canvas */
@@ -564,11 +606,19 @@
       </div>
     </div>
     <div class="pool-footer" id="poolFooter">
-      <div class="pool-header">
-        <span id="poolCount">0 块</span>
-        <button class="pool-expand-btn" id="poolExpandBtn">展开</button>
+      <div class="pool-handle" id="poolHandle">
+        <span class="pool-count" id="poolCount">0 块</span>
       </div>
-      <div class="pool-body" id="poolBody"></div>
+      <div class="pool-content">
+        <div class="pool-body" id="poolBody"></div>
+        <div class="pool-scrollbar">
+          <button class="pool-scroll-btn" id="poolScrollUp">▲</button>
+          <div class="pool-scroll-track" id="poolScrollTrack">
+            <div class="pool-scroll-thumb" id="poolScrollThumb"></div>
+          </div>
+          <button class="pool-scroll-btn" id="poolScrollDown">▼</button>
+        </div>
+      </div>
     </div>
   </main>
   <main class="view view-gallery" id="viewGallery">
@@ -938,18 +988,87 @@ const Game = {
     $("loadProgressBtn").addEventListener("click", () => this.loadProgress(true));
     $("clearProgressBtn").addEventListener("click", () => ProgressManager.clearCurrent());
     $("backToLevelsBtn").addEventListener("click", () => Router.go("/levels"));
-    $("poolExpandBtn").addEventListener("click", () => {
-      this.poolExpanded = !this.poolExpanded;
-      $("poolExpandBtn").textContent = this.poolExpanded ? "收起" : "展开";
-      this.poolFooter.style.maxHeight = this.poolExpanded ? "40vh" : "200px";
+    // Pool drag handle - drag to resize pool height
+    const handle = $("poolHandle");
+    let poolDragging = false, poolStartY = 0, poolStartH = 0;
+    handle.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      poolDragging = true;
+      poolStartY = e.clientY;
+      poolStartH = this.poolFooter.offsetHeight;
+      this.poolFooter.classList.add("dragging");
+      try { handle.setPointerCapture(e.pointerId); } catch(_) {}
     });
+    handle.addEventListener("pointermove", (e) => {
+      if (!poolDragging) return;
+      const dy = poolStartY - e.clientY; // drag up = increase height
+      const newH = Math.max(80, Math.min(window.innerHeight * 0.5, poolStartH + dy));
+      this.poolFooter.style.height = newH + "px";
+      this.renderPool();
+    });
+    const poolDragEnd = (e) => {
+      if (!poolDragging) return;
+      poolDragging = false;
+      this.poolFooter.classList.remove("dragging");
+      this.renderPool();
+    };
+    handle.addEventListener("pointerup", poolDragEnd);
+    handle.addEventListener("pointercancel", poolDragEnd);
+    // Pool scrollbar buttons
+    $("poolScrollUp").addEventListener("click", () => {
+      this.poolBody.scrollBy({ top: -60, behavior: "smooth" });
+    });
+    $("poolScrollDown").addEventListener("click", () => {
+      this.poolBody.scrollBy({ top: 60, behavior: "smooth" });
+    });
+    // Pool scrollbar thumb drag
+    const track = $("poolScrollTrack");
+    const thumb = $("poolScrollThumb");
+    let thumbDragging = false, thumbStartY = 0, thumbStartTop = 0;
+    const updateThumb = () => {
+      const sb = this.poolBody;
+      if (sb.scrollHeight <= sb.clientHeight) { thumb.style.display = "none"; return; }
+      thumb.style.display = "";
+      const ratio = sb.scrollTop / (sb.scrollHeight - sb.clientHeight);
+      const trackH = track.clientHeight - thumb.offsetHeight;
+      thumb.style.top = (ratio * trackH) + "px";
+      const thumbH = Math.max(20, (sb.clientHeight / sb.scrollHeight) * track.clientHeight);
+      thumb.style.height = thumbH + "px";
+    };
+    thumb.addEventListener("pointerdown", (e) => {
+      e.preventDefault(); e.stopPropagation();
+      thumbDragging = true;
+      thumbStartY = e.clientY;
+      thumbStartTop = parseFloat(thumb.style.top) || 0;
+      try { thumb.setPointerCapture(e.pointerId); } catch(_) {}
+    });
+    thumb.addEventListener("pointermove", (e) => {
+      if (!thumbDragging) return;
+      const dy = e.clientY - thumbStartY;
+      const trackH = track.clientHeight - thumb.offsetHeight;
+      const newTop = Math.max(0, Math.min(trackH, thumbStartTop + dy));
+      const ratio = newTop / trackH;
+      this.poolBody.scrollTop = ratio * (this.poolBody.scrollHeight - this.poolBody.clientHeight);
+    });
+    const thumbEnd = () => { thumbDragging = false; };
+    thumb.addEventListener("pointerup", thumbEnd);
+    thumb.addEventListener("pointercancel", thumbEnd);
+    // Click on track to jump
+    track.addEventListener("pointerdown", (e) => {
+      if (e.target === thumb) return;
+      const trackH = track.clientHeight - thumb.offsetHeight;
+      const ratio = Math.max(0, Math.min(1, (e.offsetY - thumb.offsetHeight / 2) / trackH));
+      this.poolBody.scrollTo({ top: ratio * (this.poolBody.scrollHeight - this.poolBody.clientHeight), behavior: "smooth" });
+    });
+    this._updatePoolThumb = updateThumb;
+    this.poolBody.addEventListener("scroll", updateThumb);
     $("backLevelsBtn").addEventListener("click", () => {
       $("winModal").classList.remove("show");
       Router.go("/levels");
     });
     this.bindBoardGestures();
     window.addEventListener("resize", () => {
-      if (this.layoutMode === "phone") { this.layoutBoardPhone(); this.renderPool(); }
+      if (this.layoutMode === "phone") { this.layoutBoardPhone(); this.renderPool(); if (this._updatePoolThumb) setTimeout(() => this._updatePoolThumb(), 100); }
       else this.layoutBoard();
     });
     this.currentLevelId = 1;
@@ -1317,6 +1436,7 @@ const Game = {
       count++;
     }
     $("poolCount").textContent = count + " 块";
+    if (this._updatePoolThumb) setTimeout(() => this._updatePoolThumb(), 50);
   },
   bindPoolDrag(el, piece) {
     let dragging = false, ghostEl = null, pointerId = null;
@@ -1619,6 +1739,11 @@ const Game = {
   },
   applyBoardTransform() {
     this.board.style.transform = `translate(${this.boardOffsetX}px, ${this.boardOffsetY}px) scale(${this.boardScale})`;
+    // Phone mode: throttle pool re-render during gestures
+    if (this.layoutMode === "phone" && this.poolBody && this.poolBody.children.length > 0) {
+      if (this._poolSyncTimer) clearTimeout(this._poolSyncTimer);
+      this._poolSyncTimer = setTimeout(() => { this.renderPool(); this._poolSyncTimer = null; }, 150);
+    }
   },
   onEnterGame() {
     if (this.layoutMode === "phone") this.layoutBoardPhone();
@@ -2144,6 +2269,11 @@ const Game = {
         touchState = null;
         // 延迟清除gesture标记，确保pointer事件已经取消
         setTimeout(() => { this._isGesturing = false; }, 100);
+        // Phone mode: sync pool immediately after gesture ends
+        if (this.layoutMode === "phone" && this.poolBody) {
+          if (this._poolSyncTimer) { clearTimeout(this._poolSyncTimer); this._poolSyncTimer = null; }
+          this.renderPool();
+        }
       }
     };
     this.boardArea.addEventListener("touchend", touchEnd);
