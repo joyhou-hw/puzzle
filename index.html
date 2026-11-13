@@ -35,28 +35,30 @@
   body { display: flex; flex-direction: column; }
   .topbar {
     flex: 0 0 auto; display: flex; align-items: center; gap: 10px;
-    padding: 10px 12px; background: var(--surface);
-    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+    background: linear-gradient(180deg, #1e2228 0%, #171a1f 100%);
+    border-bottom: 1px solid rgba(15,220,120,0.15);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
     padding-top: max(10px, env(safe-area-inset-top));
     flex-wrap: wrap;
   }
   .tabs {
     flex: 0 0 auto; display: flex; gap: 2px;
-    background: var(--surface-muted); border-radius: var(--radius);
+    background: rgba(0,0,0,0.25); border-radius: var(--radius);
     padding: 2px;
   }
   .tabs a {
     padding: 6px 12px; border-radius: 6px;
-    text-decoration: none; color: var(--text-muted);
+    text-decoration: none; color: rgba(255,255,255,0.45);
     font-size: 12px; font-weight: 500;
     transition: background 0.15s, color 0.15s;
     white-space: nowrap;
     display: inline-flex; align-items: center; gap: 4px;
   }
-  .tabs a:hover { color: var(--text); }
+  .tabs a:hover { color: rgba(255,255,255,0.8); }
   .tabs a.active {
-    background: var(--surface); color: var(--brand-text);
-    font-weight: 600; box-shadow: var(--shadow);
+    background: rgba(15,220,120,0.15); color: rgba(15,220,120,0.95);
+    font-weight: 600; box-shadow: 0 0 8px rgba(15,220,120,0.15);
   }
   .tabs a .tab-icon { font-size: 13px; line-height: 1; }
   .topbar-game-controls {
@@ -68,39 +70,39 @@
   body.view-levels .topbar-game-controls,
   body.view-mode .topbar-game-controls { display: none; }
   .progress-wrap { flex: 1 1 auto; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 260px; }
-  .progress-bar { flex: 1 1 auto; height: 8px; border-radius: 999px; background: var(--surface-muted); overflow: hidden; }
-  .progress-fill { height: 100%; width: 0%; background: var(--brand); border-radius: 999px; transition: width 0.3s ease; }
-  .progress-text { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+  .progress-bar { flex: 1 1 auto; height: 8px; border-radius: 999px; background: rgba(0,0,0,0.3); overflow: hidden; }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0fdc78, #32f08c); border-radius: 999px; transition: width 0.3s ease; box-shadow: 0 0 6px rgba(15,220,120,0.4); }
+  .progress-text { font-size: 12px; color: rgba(255,255,255,0.5); font-variant-numeric: tabular-nums; flex: 0 0 auto; }
   .btn {
     flex: 0 0 auto; padding: 7px 11px; border-radius: var(--radius);
-    border: 1px solid var(--border); background: var(--surface);
-    color: var(--text); font: inherit; font-size: 12px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.8); font: inherit; font-size: 12px; cursor: pointer;
     display: inline-flex; align-items: center; gap: 5px;
-    transition: background 0.15s; white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s; white-space: nowrap;
   }
-  .btn:active { background: var(--surface-muted); }
-  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .btn-primary { background: var(--brand); color: #004d26; border-color: var(--brand); font-weight: 600; }
+  .btn:active { background: rgba(15,220,120,0.12); border-color: rgba(15,220,120,0.3); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: rgba(15,220,120,0.2); color: rgba(15,220,120,0.95); border-color: rgba(15,220,120,0.4); font-weight: 600; }
   .btn-primary:active { filter: brightness(0.95); }
   .btn-icon { padding: 7px 9px; }
-  .btn-danger { color: var(--danger); border-color: var(--danger); }
+  .btn-danger { color: #ff6b5e; border-color: rgba(232,70,58,0.4); }
   .difficulty-switch {
     flex: 0 0 auto; display: inline-flex;
-    border: 1px solid var(--border); border-radius: var(--radius);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius);
     overflow: hidden;
   }
   .difficulty-switch button {
-    padding: 6px 10px; border: 0; background: var(--surface);
-    color: var(--text-muted); font: inherit; font-size: 11px;
-    cursor: pointer; border-right: 1px solid var(--border);
+    padding: 6px 10px; border: 0; background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.5); font: inherit; font-size: 11px;
+    cursor: pointer; border-right: 1px solid rgba(255,255,255,0.08);
     transition: background 0.15s, color 0.15s;
   }
   .difficulty-switch button:last-child { border-right: 0; }
   .difficulty-switch button.active {
-    background: var(--brand); color: #004d26; font-weight: 600;
+    background: rgba(15,220,120,0.2); color: rgba(15,220,120,0.95); font-weight: 600;
   }
   .difficulty-switch button.active[data-diff="nightmare"] {
-    background: var(--danger); color: #fff;
+    background: rgba(232,70,58,0.25); color: #ff8a80;
   }
   .view {
     flex: 1 1 auto; display: none; flex-direction: column;
