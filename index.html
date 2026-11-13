@@ -194,7 +194,7 @@
   }
   .pool-footer.show { display: flex; }
   .pool-footer.dragging { transition: none; }
-  /* Drag handle */
+  /* Drag handle with left/right scroll buttons */
   .pool-handle {
     flex: 0 0 auto; height: 28px; display: flex; align-items: center; justify-content: center;
     cursor: ns-resize; touch-action: none; user-select: none;
@@ -211,17 +211,31 @@
     position: absolute; right: 12px; font-size: 11px; color: rgba(255,255,255,0.4);
     font-variant-numeric: tabular-nums;
   }
-  /* Pool content area */
+  .pool-nav-btn {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 32px; height: 24px; display: flex; align-items: center; justify-content: center;
+    border: none; background: rgba(15,220,120,0.1); color: rgba(15,220,120,0.6);
+    cursor: pointer; font-size: 14px; border-radius: 4px;
+    transition: background 0.15s, color 0.15s, transform 0.15s;
+    touch-action: manipulation;
+  }
+  .pool-nav-btn:hover { background: rgba(15,220,120,0.2); color: rgba(15,220,120,0.9); }
+  .pool-nav-btn:active { background: rgba(15,220,120,0.3); transform: translateY(-50%) scale(0.9); }
+  .pool-nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+  .pool-nav-btn.left { left: 6px; }
+  .pool-nav-btn.right { right: 6px; }
+  /* Pool content area - horizontal scroll */
   .pool-content {
-    flex: 1 1 auto; display: flex; overflow: hidden; min-height: 0;
+    flex: 1 1 auto; overflow: hidden; min-height: 0; position: relative;
   }
   .pool-body {
-    flex: 1 1 auto; overflow-y: auto; overflow-x: hidden;
-    padding: 6px 4px 6px 8px;
+    width: 100%; height: 100%; overflow-y: hidden; overflow-x: auto;
+    padding: 6px 8px;
     display: flex; flex-wrap: wrap; gap: 4px; align-content: flex-start;
     scrollbar-width: none;
   }
-  .pool-body::-webkit-scrollbar { width: 0; display: none; }
+  .pool-body::-webkit-scrollbar { width: 0; height: 0; display: none; }
+  .pool-body.slide-anim { scroll-behavior: smooth; }
   .pool-piece {
     flex: 0 0 auto; position: relative;
     background-repeat: no-repeat; cursor: grab; touch-action: none; user-select: none;
@@ -230,29 +244,6 @@
     filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
   }
   .pool-piece:active { cursor: grabbing; transform: scale(1.08); }
-  /* Custom scrollbar track on right side */
-  .pool-scrollbar {
-    flex: 0 0 auto; width: 28px; display: flex; flex-direction: column;
-    background: rgba(0,0,0,0.2); border-left: 1px solid rgba(255,255,255,0.05);
-  }
-  .pool-scroll-btn {
-    flex: 0 0 auto; height: 28px; display: flex; align-items: center; justify-content: center;
-    border: none; background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.4);
-    cursor: pointer; font-size: 12px; transition: background 0.15s, color 0.15s;
-  }
-  .pool-scroll-btn:hover { background: rgba(15,220,120,0.12); color: rgba(15,220,120,0.8); }
-  .pool-scroll-btn:active { background: rgba(15,220,120,0.2); }
-  .pool-scroll-track {
-    flex: 1 1 auto; position: relative; background: rgba(0,0,0,0.15);
-    cursor: pointer; touch-action: none;
-  }
-  .pool-scroll-thumb {
-    position: absolute; left: 4px; right: 4px; top: 0; height: 30px;
-    background: rgba(15,220,120,0.3); border-radius: 4px;
-    transition: background 0.15s; cursor: grab; touch-action: none;
-  }
-  .pool-scroll-thumb:hover { background: rgba(15,220,120,0.5); }
-  .pool-scroll-thumb:active { background: rgba(15,220,120,0.7); cursor: grabbing; }
   /* Phone mode: board takes more space, pool at bottom */
   body.layout-phone .board-area { flex: 1 1 auto; }
   /* Tablet mode: no pool, pieces scattered on canvas */
@@ -607,17 +598,12 @@
     </div>
     <div class="pool-footer" id="poolFooter">
       <div class="pool-handle" id="poolHandle">
+        <button class="pool-nav-btn left" id="poolNavLeft">‹</button>
         <span class="pool-count" id="poolCount">0 块</span>
+        <button class="pool-nav-btn right" id="poolNavRight">›</button>
       </div>
       <div class="pool-content">
         <div class="pool-body" id="poolBody"></div>
-        <div class="pool-scrollbar">
-          <button class="pool-scroll-btn" id="poolScrollUp">▲</button>
-          <div class="pool-scroll-track" id="poolScrollTrack">
-            <div class="pool-scroll-thumb" id="poolScrollThumb"></div>
-          </div>
-          <button class="pool-scroll-btn" id="poolScrollDown">▼</button>
-        </div>
       </div>
     </div>
   </main>
@@ -988,10 +974,12 @@ const Game = {
     $("loadProgressBtn").addEventListener("click", () => this.loadProgress(true));
     $("clearProgressBtn").addEventListener("click", () => ProgressManager.clearCurrent());
     $("backToLevelsBtn").addEventListener("click", () => Router.go("/levels"));
-    // Pool drag handle - drag to resize pool height
+    // Pool drag handle - drag to resize pool height (only on handle center, not buttons)
     const handle = $("poolHandle");
     let poolDragging = false, poolStartY = 0, poolStartH = 0;
     handle.addEventListener("pointerdown", (e) => {
+      // Ignore if clicking on nav buttons
+      if (e.target.classList.contains("pool-nav-btn")) return;
       e.preventDefault();
       poolDragging = true;
       poolStartY = e.clientY;
@@ -1001,74 +989,45 @@ const Game = {
     });
     handle.addEventListener("pointermove", (e) => {
       if (!poolDragging) return;
-      const dy = poolStartY - e.clientY; // drag up = increase height
+      const dy = poolStartY - e.clientY;
       const newH = Math.max(80, Math.min(window.innerHeight * 0.5, poolStartH + dy));
       this.poolFooter.style.height = newH + "px";
-      this.renderPool();
+      this.renderPoolPreserveScroll();
     });
     const poolDragEnd = (e) => {
       if (!poolDragging) return;
       poolDragging = false;
       this.poolFooter.classList.remove("dragging");
-      this.renderPool();
+      this.renderPoolPreserveScroll();
     };
     handle.addEventListener("pointerup", poolDragEnd);
     handle.addEventListener("pointercancel", poolDragEnd);
-    // Pool scrollbar buttons
-    $("poolScrollUp").addEventListener("click", () => {
-      this.poolBody.scrollBy({ top: -60, behavior: "smooth" });
-    });
-    $("poolScrollDown").addEventListener("click", () => {
-      this.poolBody.scrollBy({ top: 60, behavior: "smooth" });
-    });
-    // Pool scrollbar thumb drag
-    const track = $("poolScrollTrack");
-    const thumb = $("poolScrollThumb");
-    let thumbDragging = false, thumbStartY = 0, thumbStartTop = 0;
-    const updateThumb = () => {
+    // Pool left/right navigation buttons
+    const navLeft = $("poolNavLeft");
+    const navRight = $("poolNavRight");
+    const scrollPoolBy = (dir) => {
       const sb = this.poolBody;
-      if (sb.scrollHeight <= sb.clientHeight) { thumb.style.display = "none"; return; }
-      thumb.style.display = "";
-      const ratio = sb.scrollTop / (sb.scrollHeight - sb.clientHeight);
-      const trackH = track.clientHeight - thumb.offsetHeight;
-      thumb.style.top = (ratio * trackH) + "px";
-      const thumbH = Math.max(20, (sb.clientHeight / sb.scrollHeight) * track.clientHeight);
-      thumb.style.height = thumbH + "px";
+      const scrollAmount = sb.clientWidth * 0.8 * dir;
+      // Add slide animation effect
+      sb.classList.add("slide-anim");
+      sb.scrollBy({ left: scrollAmount, behavior: "smooth" });
+      // Flash effect on pieces
+      const pieces = sb.querySelectorAll(".pool-piece");
+      pieces.forEach((p, i) => {
+        p.style.transform = `translateX(${dir > 0 ? -8 : 8}px)`;
+        setTimeout(() => { p.style.transform = ""; }, 200 + i * 5);
+      });
+      setTimeout(() => sb.classList.remove("slide-anim"), 400);
     };
-    thumb.addEventListener("pointerdown", (e) => {
-      e.preventDefault(); e.stopPropagation();
-      thumbDragging = true;
-      thumbStartY = e.clientY;
-      thumbStartTop = parseFloat(thumb.style.top) || 0;
-      try { thumb.setPointerCapture(e.pointerId); } catch(_) {}
-    });
-    thumb.addEventListener("pointermove", (e) => {
-      if (!thumbDragging) return;
-      const dy = e.clientY - thumbStartY;
-      const trackH = track.clientHeight - thumb.offsetHeight;
-      const newTop = Math.max(0, Math.min(trackH, thumbStartTop + dy));
-      const ratio = newTop / trackH;
-      this.poolBody.scrollTop = ratio * (this.poolBody.scrollHeight - this.poolBody.clientHeight);
-    });
-    const thumbEnd = () => { thumbDragging = false; };
-    thumb.addEventListener("pointerup", thumbEnd);
-    thumb.addEventListener("pointercancel", thumbEnd);
-    // Click on track to jump
-    track.addEventListener("pointerdown", (e) => {
-      if (e.target === thumb) return;
-      const trackH = track.clientHeight - thumb.offsetHeight;
-      const ratio = Math.max(0, Math.min(1, (e.offsetY - thumb.offsetHeight / 2) / trackH));
-      this.poolBody.scrollTo({ top: ratio * (this.poolBody.scrollHeight - this.poolBody.clientHeight), behavior: "smooth" });
-    });
-    this._updatePoolThumb = updateThumb;
-    this.poolBody.addEventListener("scroll", updateThumb);
+    navLeft.addEventListener("click", (e) => { e.stopPropagation(); scrollPoolBy(-1); });
+    navRight.addEventListener("click", (e) => { e.stopPropagation(); scrollPoolBy(1); });
     $("backLevelsBtn").addEventListener("click", () => {
       $("winModal").classList.remove("show");
       Router.go("/levels");
     });
     this.bindBoardGestures();
     window.addEventListener("resize", () => {
-      if (this.layoutMode === "phone") { this.layoutBoardPhone(); this.renderPool(); if (this._updatePoolThumb) setTimeout(() => this._updatePoolThumb(), 100); }
+      if (this.layoutMode === "phone") { this.layoutBoardPhone(); this.renderPoolPreserveScroll(); }
       else this.layoutBoard();
     });
     this.currentLevelId = 1;
@@ -1412,18 +1371,45 @@ const Game = {
   },
   renderPool() {
     if (!this.poolBody) return;
+    this._poolScrollLeft = 0;
+    this.renderPoolInternal();
+  },
+  renderPoolPreserveScroll() {
+    if (!this.poolBody) return;
+    this._poolScrollLeft = this.poolBody.scrollLeft;
+    this.renderPoolInternal();
+  },
+  renderPoolInternal() {
+    if (!this.poolBody) return;
+    const savedScroll = this._poolScrollLeft || 0;
+    // Remember first visible piece id before re-render
+    let firstVisibleId = null;
+    const oldScroll = this.poolBody.scrollLeft;
+    if (this.poolBody.children.length > 0) {
+      for (const child of this.poolBody.children) {
+        if (child.offsetLeft + child.offsetWidth > oldScroll) {
+          firstVisibleId = child.dataset.pid || null;
+          break;
+        }
+      }
+    }
     this.poolBody.innerHTML = "";
     const poolW = this.poolBody.clientWidth || 360;
+    const poolH = this.poolBody.clientHeight || 120;
     const pieceScreenW = this.hexW * this.boardScale;
-    const cols = Math.max(1, Math.floor(poolW / (pieceScreenW + 4)));
-    const pieceW = Math.floor((poolW - 4 - cols * 4) / cols);
+    const gap = 4;
+    const cols = Math.max(1, Math.floor((poolW + gap) / (pieceScreenW + gap)));
+    const pieceW = Math.floor((poolW - gap - cols * gap) / cols);
     const pieceH = Math.round(pieceW * SQRT3 / 2);
+    const rows = Math.max(1, Math.floor((poolH - gap) / (pieceH + gap)));
     let count = 0;
+    let firstEl = null;
     for (const id of this.poolOrder) {
       const p = this.pieces[id];
       if (!p || p.status !== "pooled") continue;
       const el = document.createElement("div");
       el.className = "pool-piece";
+      el.dataset.pid = id;
       el.style.width = pieceW + "px";
       el.style.height = pieceH + "px";
       el.style.backgroundImage = `url(${this.imgDataURL})`;
@@ -1433,10 +1419,21 @@ const Game = {
       this.bindPoolDrag(el, p);
       this.poolBody.appendChild(el);
       p.el = el;
+      if (count === 0) firstEl = el;
       count++;
     }
     $("poolCount").textContent = count + " 块";
-    if (this._updatePoolThumb) setTimeout(() => this._updatePoolThumb(), 50);
+    // Restore scroll position: try to scroll to the same first visible piece
+    if (firstVisibleId) {
+      const targetEl = this.poolBody.querySelector(`[data-pid="${firstVisibleId}"]`);
+      if (targetEl) {
+        this.poolBody.scrollLeft = targetEl.offsetLeft;
+      } else {
+        this.poolBody.scrollLeft = savedScroll;
+      }
+    } else {
+      this.poolBody.scrollLeft = savedScroll;
+    }
   },
   bindPoolDrag(el, piece) {
     let dragging = false, ghostEl = null, pointerId = null;
@@ -1582,7 +1579,7 @@ const Game = {
         this.returnToPoolPhone(p);
       }
     }
-    this.renderPool();
+    this.renderPoolPreserveScroll();
     this.updateProgress();
     this.saveProgress();
     this.checkWin();
@@ -1607,7 +1604,7 @@ const Game = {
         const dist = Math.hypot(p.centerX - dropCenterX, p.centerY - dropCenterY);
         if (dist < pushThreshold) {
           this.returnToPoolPhone(piece);
-          this.renderPool();
+          this.renderPoolPreserveScroll();
           this.saveProgress();
           return;
         }
@@ -1620,7 +1617,7 @@ const Game = {
     piece.el = el; piece.status = "placed_wrong";
     piece.wrongX = lx - this.hexW / 2; piece.wrongY = ly - this.metrics.hexH / 2;
     this.bindBoardPieceDrag(el, piece);
-    this.renderPool();
+    this.renderPoolPreserveScroll();
     this.saveProgress();
   },
   returnToPoolPhone(piece) {
@@ -1742,7 +1739,7 @@ const Game = {
     // Phone mode: throttle pool re-render during gestures
     if (this.layoutMode === "phone" && this.poolBody && this.poolBody.children.length > 0) {
       if (this._poolSyncTimer) clearTimeout(this._poolSyncTimer);
-      this._poolSyncTimer = setTimeout(() => { this.renderPool(); this._poolSyncTimer = null; }, 150);
+      this._poolSyncTimer = setTimeout(() => { this.renderPoolPreserveScroll(); this._poolSyncTimer = null; }, 150);
     }
   },
   onEnterGame() {
@@ -1875,7 +1872,7 @@ const Game = {
           this.returnToPoolPhone(p);
         }
       });
-      this.renderPool();
+      this.renderPoolPreserveScroll();
     } else {
       this.pieceList.forEach(p => {
         if (p.status === "placed_wrong") {
@@ -2216,7 +2213,7 @@ const Game = {
         }
       });
       this.poolOrder = shuffle(this.pieceList.filter(p => p.status === "pooled").map(p => p.id));
-      this.renderPool();
+      this.renderPoolInternal();
     } else {
       this.scatterPieces();
     }
@@ -2272,7 +2269,7 @@ const Game = {
         // Phone mode: sync pool immediately after gesture ends
         if (this.layoutMode === "phone" && this.poolBody) {
           if (this._poolSyncTimer) { clearTimeout(this._poolSyncTimer); this._poolSyncTimer = null; }
-          this.renderPool();
+          this.renderPoolPreserveScroll();
         }
       }
     };
