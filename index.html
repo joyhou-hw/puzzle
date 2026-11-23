@@ -1000,6 +1000,122 @@ function computeGridFromImage(imgW, imgH, targetPieces) {
   }
   return best || { cols: Math.round(idealCols), rows: Math.round(idealRows), pieces: targetPieces };
 }
+// ---------- 一次性数据迁移：兼容历史版本 ----------
+// 覆盖 v1/v2/v3/中间版本(100关) → 当前 v4(211关) 的所有旧键名
+function migrateOldData() {
+  if (localStorage.getItem("puzzle_migrated_v4")) return; // 已迁移过，跳过
+  try {
+    // 旧版 v3 关卡 ID 映射表：easy_1→1 ... nightmare_3→9
+    const v3IdMap = {
+      "easy_1": 1, "easy_2": 2, "easy_3": 3,
+      "hard_1": 4, "hard_2": 5, "hard_3": 6,
+      "nightmare_1": 7, "nightmare_2": 8, "nightmare_3": 9
+    };
+    // v3 difficulty → v4 mode
+    const diffToMode = { easy: "easy", hard: "hard", nightmare: "nightmare" };
+
+    // 1) 迁移通关记录
+    let clears = {};
+    try { clears = JSON.parse(localStorage.getItem(CLEARS_KEY) || "{}"); } catch(e) {}
+    const mergeClear = (newId, mode, rec) => {
+      if (!newId || !mode || !LEVELS.find(l => l.id === newId)) return;
+      if (!clears[newId]) clears[newId] = {};
+      if (!clears[newId][mode]) {
+        clears[newId][mode] = { elapsed: rec.elapsed || 0, moves: rec.moves || 0, completedAt: rec.completedAt || Date.now() };
+      }
+    };
+    // v3 gallery
+    try {
+      const v3Gallery = JSON.parse(localStorage.getItem("puzzle_gallery_v3") || "[]");
+      v3Gallery.forEach(rec => {
+        const newId = v3IdMap[rec.levelId];
+        const mode = diffToMode[rec.difficulty];
+        mergeClear(newId, mode, rec);
+      });
+    } catch(e) {}
+    // v1/v2 gallery
+    try {
+      const v2Gallery = JSON.parse(localStorage.getItem("puzzle_gallery") || "[]");
+      v2Gallery.forEach(rec => {
+        mergeClear(rec.levelId, "easy", rec);
+      });
+    } catch(e) {}
+    localStorage.setItem(CLEARS_KEY, JSON.stringify(clears));
+
+    // 2) 迁移中途进度快照
+    //    v3/v1/v2 格式: puzzle_progress_${levelId} (levelId 可能是 "easy_1" 或纯数字)
+    const oldProgressKeys = [];
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (key.startsWith("puzzle_progress_") && !key.startsWith("puzzle_progress_v4_")) {
+        oldProgressKeys.push(key);
+      }
+    }
+    oldProgressKeys.forEach(key => {
+      try {
+        const snap = JSON.parse(localStorage.getItem(key) || "null");
+        if (!snap) { localStorage.removeItem(key); return; }
+        const oldId = snap.levelId || key.replace("puzzle_progress_", "");
+        let newId = null, mode = snap.difficulty || "easy";
+        if (v3IdMap[oldId]) {
+          newId = v3IdMap[oldId];
+          mode = diffToMode[snap.difficulty] || "easy";
+        } else if (!isNaN(parseInt(oldId))) {
+          newId = parseInt(oldId);
+        }
+        if (!newId || !LEVELS.find(l => l.id === newId)) {
+          localStorage.removeItem(key);
+          return;
+        }
+        const newKey = `puzzle_progress_v4_${newId}_${mode}`;
+        if (!localStorage.getItem(newKey)) {
+          localStorage.setItem(newKey, JSON.stringify(snap));
+        }
+        localStorage.removeItem(key);
+      } catch(e) {}
+    });
+
+    // 3) 重建解锁状态：根据通关记录，解锁到 maxClearedLevel + 1
+    let maxCleared = 0;
+    for (const lv of LEVELS) {
+      const modes = clears[lv.id];
+      if (modes && Object.keys(modes).length > 0) {
+        if (lv.id > maxCleared) maxCleared = lv.id;
+      }
+    }
+    const unlocked = [];
+    for (let i = 1; i <= Math.min(maxCleared + 1, LEVELS.length); i++) unlocked.push(i);
+    if (unlocked.length === 0) unlocked.push(1);
+    localStorage.setItem(UNLOCK_KEY, JSON.stringify(unlocked));
+
+    // 4) 迁移当前关卡记录
+    try {
+      const v3Cur = JSON.parse(localStorage.getItem("puzzle_current_v3") || "null");
+      if (v3Cur && v3Cur.levelId) {
+        const newId = v3IdMap[v3Cur.levelId] || (!isNaN(parseInt(v3Cur.levelId)) ? parseInt(v3Cur.levelId) : null);
+        if (newId && LEVELS.find(l => l.id === newId)) {
+          localStorage.setItem("puzzle_current_v4", JSON.stringify({
+            levelId: newId, mode: diffToMode[v3Cur.difficulty] || "easy",
+          }));
+        }
+      }
+    } catch(e) {}
+    localStorage.removeItem("puzzle_current_v3");
+
+    // 5) 清理旧键
+    localStorage.removeItem("puzzle_gallery_v3");
+    localStorage.removeItem("puzzle_gallery");
+
+    // 6) 标记迁移完成
+    localStorage.setItem("puzzle_migrated_v4", "1");
+    console.log("[migrateOldData] 历史数据迁移完成");
+  } catch(e) {
+    console.warn("[migrateOldData] 迁移失败:", e);
+    localStorage.setItem("puzzle_migrated_v4", "1");
+  }
+}
+
 const Game = {
   level: null, levelIdx: 0, currentDifficulty: "easy",
   imgCanvas: null, imgDataURL: "",
@@ -1016,6 +1132,7 @@ const Game = {
   poolFooter: null, poolBody: null, poolOrder: [], poolExpanded: false,
   _highlightThrottle: 0,
   init() {
+    migrateOldData();
     this.boardArea = $("boardArea");
     this.board = $("board");
     this.boardInner = $("boardInner");
